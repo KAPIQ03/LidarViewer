@@ -18,12 +18,23 @@
     <DockPanel>
         <DockPanel DockPanel.Dock="Top">
             <Button DockPanel.Dock="Right" Content="Wyświetl" Command="{Binding LoadCommand}" />
-            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding Planes}" SelectedItem="{Binding Plane}" />
+            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding ViewModes}" SelectedItem="{Binding ViewMode}" />
+            <!-- Płaszczyzna rzutu ma sens tylko w widoku 2D. -->
+            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding Planes}" SelectedItem="{Binding Plane}"
+                      IsVisible="{Binding Is2D}" />
             <Button DockPanel.Dock="Right" Content="Wybierz plik..." Click="OnBrowseClick" />
             <TextBox Text="{Binding FilePath}" PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .ply, .pcd, .las)" />
         </DockPanel>
         <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" />
-        <c:PointCloudView PointCloud="{Binding PointCloud}" Plane="{Binding Plane}" />
+        <!-- Dziennik diagnostyczny OpenGL (do skopiowania): wersja GL, błędy shaderów i GL. -->
+        <TextBox DockPanel.Dock="Bottom" Text="{Binding Diagnostics, Mode=OneWay}" IsReadOnly="True"
+                 AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="120" />
+        <!-- Oba widoki w jednym polu; widoczny jest tylko wybrany. -->
+        <Grid>
+            <c:PointCloudView3D IsVisible="{Binding Is3D}" PointCloud="{Binding PointCloud}"
+                                Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
+            <c:PointCloudView IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}" Plane="{Binding Plane}" />
+        </Grid>
     </DockPanel>
 
 </Window>
