@@ -1,6 +1,5 @@
 namespace LidarViewer.Core.Tests;
 
-/// <summary>Baza testów tworzących pliki: własny katalog tymczasowy sprzątany po teście.</summary>
 public abstract class TempDirTestBase : IDisposable
 {
     protected string Dir { get; } = Directory.CreateTempSubdirectory("lv-tests").FullName;

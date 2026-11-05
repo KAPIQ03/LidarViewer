@@ -4,19 +4,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Czytnik plików PCD (Point Cloud Library) - DATA ascii, binary oraz binary_compressed.
-///
-/// Nagłówek tekstowy (do linii DATA) zawiera: FIELDS (nazwy pól), SIZE (bajty), TYPE (F/U/I),
-/// COUNT (elementów w polu), WIDTH/HEIGHT/POINTS (liczba punktów) i DATA (sposób zapisu).
-///
-/// Zapis danych:
-///  - ascii: jedna linia na punkt, wartości oddzielone spacjami,
-///  - binary: punkty jeden po drugim (wiersze równej długości),
-///  - binary_compressed: dwie liczby uint32 (rozmiar skompresowany i po dekompresji), potem
-///    dane skompresowane LZF. Po rozpakowaniu dane są ułożone kolumnowo: najpierw wszystkie
-///    wartości pola 1 dla wszystkich punktów, potem pola 2 itd.
-/// </summary>
 public static class PcdReader
 {
     private sealed record Field(string Name, ScalarType Type, int Size, int Count);
@@ -48,11 +35,11 @@ public static class PcdReader
                 case "POINTS": points = long.Parse(t[1], CultureInfo.InvariantCulture); break;
                 case "DATA": data = t[1].ToLowerInvariant(); break;
             }
-            if (data.Length > 0) break; // linia DATA kończy nagłówek
+            if (data.Length > 0) break;
         }
         if (data.Length == 0) throw new InvalidDataException("Nagłówek PCD nie ma linii DATA.");
 
-        if (counts.Length == 0) counts = names.Select(_ => 1).ToArray(); // COUNT jest opcjonalne (domyślnie 1)
+        if (counts.Length == 0) counts = names.Select(_ => 1).ToArray();
         if (names.Length == 0 || sizes.Length != names.Length || types.Length != names.Length || counts.Length != names.Length)
             throw new InvalidDataException("Nagłówek PCD ma niespójne FIELDS/SIZE/TYPE/COUNT.");
         if (points < 0) points = width * height;
@@ -84,7 +71,6 @@ public static class PcdReader
 
     private static void ReadAscii(Stream s, Field[] fields, long points, int xi, int yi, int zi, int ii, PointAccumulator acc)
     {
-        // Indeks kolumny tekstowej pierwszej wartości każdego pola.
         var column = new int[fields.Length];
         for (int i = 1; i < fields.Length; i++) column[i] = column[i - 1] + fields[i - 1].Count;
         int total = column[^1] + fields[^1].Count;
@@ -127,7 +113,6 @@ public static class PcdReader
         StreamHelpers.ReadExactly(s, packed, "PCD: dane skompresowane");
         byte[] data = Lzf.Decompress(packed, (int)uncompressed);
 
-        // Układ kolumnowy: blok każdego pola ma points * Size * Count bajtów.
         var start = new long[fields.Length];
         for (int i = 1; i < fields.Length; i++)
             start[i] = start[i - 1] + points * fields[i - 1].Size * fields[i - 1].Count;
@@ -143,7 +128,6 @@ public static class PcdReader
 
     private static double Num(string token) => NumberParser.Parse(token);
 
-    /// <summary>Mapuje parę TYPE (F/U/I) + SIZE na typ liczbowy.</summary>
     private static ScalarType ParseType(char type, int size) => (char.ToUpperInvariant(type), size) switch
     {
         ('F', 4) => ScalarType.Float32,

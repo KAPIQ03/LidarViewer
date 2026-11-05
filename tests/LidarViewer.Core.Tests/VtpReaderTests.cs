@@ -9,7 +9,6 @@ public class VtpReaderTests : IDisposable
 
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
-    /// <summary>Buduje minimalny plik VTP (appended/raw, UInt64) z 3 punktami.</summary>
     private string WriteSample(string? rootAttrs = null, string appendedEncoding = "raw", string pointsFormat = "appended")
     {
         float[] pts = [1f, 2f, 3f, 4f, 5f, 6f, -7f, 8f, 9f];
@@ -97,7 +96,7 @@ public class VtpReaderTests : IDisposable
     public void Read_RealFile_WhenPresent()
     {
         string path = "/Users/kacper/Downloads/pointCloud.vtp";
-        if (!File.Exists(path)) return; // test opcjonalny - plik jest tylko na maszynie autora
+        if (!File.Exists(path)) return;
 
         var cloud = VtpReader.Read(path);
 

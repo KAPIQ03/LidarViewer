@@ -7,7 +7,6 @@ public class LasReaderTests : TempDirTestBase
 {
     private record Pt(int X, int Y, int Z, ushort Intensity, byte Class);
 
-    /// <summary>Buduje plik LAS: nagłówek (227 B dla 1.2, 375 B dla 1.4) + rekordy zadanego formatu.</summary>
     private byte[] Build(int minor, byte rawFormat, int recordLength, Pt[] points)
     {
         int headerSize = minor >= 4 ? 375 : 227;
@@ -47,12 +46,11 @@ public class LasReaderTests : TempDirTestBase
         var cloud = LasReader.Read(Write("a.las", Build(2, 0, 20, Sample)));
 
         Assert.Equal(2, cloud.Count);
-        // Pozycje względem minimum: (1000 - 0) * 0.01 = 10 itd.
         Assert.Equal([0f, 0f, 0f, 10f, 20f, 3f], cloud.Positions);
         Assert.Equal(500000.0, cloud.Origin.X, 6);
         Assert.Equal(6000000.0, cloud.Origin.Y, 6);
         Assert.Equal(100.0, cloud.Origin.Z, 6);
-        Assert.Equal(new byte[] { 100, 200 }, cloud.Intensity); // <= 255: bez skalowania
+        Assert.Equal(new byte[] { 100, 200 }, cloud.Intensity);
         Assert.Equal(new[] { 2, 6 }, cloud.Category);
     }
 

@@ -2,10 +2,6 @@ using System.Globalization;
 
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Parser liczb z plików tekstowych: kropka dziesiętna niezależnie od ustawień regionalnych oraz
-/// zapisy "inf"/"-inf"/"nan" (spotykane w PCD/PLY/CSV), których .NET sam nie rozpoznaje ("Infinity").
-/// </summary>
 internal static class NumberParser
 {
     public static bool TryParse(string token, out double value)

@@ -2,18 +2,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Czytnik plików tekstowych CSV z punktami.
-///
-/// Algorytm:
-///  1. Pomijamy puste linie i komentarze (zaczynające się od '#').
-///  2. Z pierwszej linii danych rozpoznajemy separator: tabulator, ';', ',' albo spacje.
-///  3. Jeśli w pierwszej linii któraś z trzech pierwszych komórek nie jest liczbą, uznajemy ją
-///     za nagłówek i szukamy kolumn x, y, z oraz (opcjonalnie) intensity/i/reflectivity po nazwie.
-///     Bez nagłówka przyjmujemy kolumny 0,1,2 jako XYZ, a kolumnę 3 (jeśli jest) jako intensywność.
-///  4. Liczby czytamy niezależnie od ustawień regionalnych (kropka dziesiętna; przy separatorze ';'
-///     akceptujemy też przecinek dziesiętny).
-/// </summary>
 public static class CsvReader
 {
     private static readonly string[] IntensityNames = ["intensity", "i", "reflectivity"];
@@ -63,7 +51,6 @@ public static class CsvReader
         return acc?.ToCloud() ?? new PointCloud([]);
     }
 
-    /// <summary>Szuka kolumn x, y, z i intensywności w wierszu nagłówka (bez względu na wielkość liter).</summary>
     private static (int X, int Y, int Z, int I) FindColumns(string[] header)
     {
         int Find(params string[] names) =>
@@ -80,13 +67,13 @@ public static class CsvReader
 
     private static string[] Split(string line, char delimiter) =>
         delimiter == ' '
-            ? line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries) // dowolna liczba białych znaków
+            ? line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
             : line.Split(delimiter, StringSplitOptions.TrimEntries);
 
     private static bool TryParse(string cell, char delimiter, out double value)
     {
         cell = cell.Trim('"');
-        if (delimiter == ';') cell = cell.Replace(',', '.'); // przecinek dziesiętny
+        if (delimiter == ';') cell = cell.Replace(',', '.');
         return NumberParser.TryParse(cell, out value);
     }
 

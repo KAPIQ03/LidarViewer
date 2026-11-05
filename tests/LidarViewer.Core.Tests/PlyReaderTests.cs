@@ -38,7 +38,7 @@ public class PlyReaderTests : TempDirTestBase
             }
             ms.WriteByte(i);
         }
-        ms.Write([3, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]); // ściana - ma zostać zignorowana
+        ms.Write([3, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]);
 
         var cloud = PlyReader.Read(Write("a.ply", ms.ToArray()));
 

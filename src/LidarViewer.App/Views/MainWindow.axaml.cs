@@ -14,11 +14,6 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
-    /// <summary>
-    /// Otwiera systemowe okno wyboru pliku (filtr *.vtp) i wpisuje wybraną ścieżkę do ViewModelu.
-    /// Okno dialogowe wymaga dostępu do okna (StorageProvider), dlatego obsługa jest tutaj,
-    /// a nie w ViewModelu.
-    /// </summary>
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm) return;
@@ -29,7 +24,6 @@ public partial class MainWindow : Window
             AllowMultiple = false,
             FileTypeFilter =
             [
-                // Filtr budowany z listy obsługiwanych rozszerzeń, więc nowe formaty pojawią się same.
                 new FilePickerFileType("Chmury punktów")
                     { Patterns = PointCloudLoader.SupportedExtensions.Select(e => "*" + e).ToArray() },
                 FilePickerFileTypes.All,
@@ -39,7 +33,7 @@ public partial class MainWindow : Window
         if (files.FirstOrDefault()?.TryGetLocalPath() is { } path)
         {
             vm.FilePath = path;
-            await vm.LoadCommand.ExecuteAsync(null); // od razu wczytaj wybrany plik
+            await vm.LoadCommand.ExecuteAsync(null);
         }
     }
 }

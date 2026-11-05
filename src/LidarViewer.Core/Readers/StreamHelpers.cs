@@ -2,14 +2,8 @@ using System.Text;
 
 namespace LidarViewer.Core.Readers;
 
-/// <summary>Pomocnicze odczyty ze strumienia: nagłówki tekstowe przed danymi binarnymi.</summary>
 internal static class StreamHelpers
 {
-    /// <summary>
-    /// Czyta jedną linię ASCII (do '\n', bez '\r'), nie wczytując nic poza nią -
-    /// dzięki temu zaraz po nagłówku można czytać dane binarne z tego samego strumienia.
-    /// Zwraca null na końcu pliku.
-    /// </summary>
     public static string? ReadLine(Stream s)
     {
         var sb = new StringBuilder();
@@ -25,7 +19,6 @@ internal static class StreamHelpers
         return any ? sb.ToString() : null;
     }
 
-    /// <summary>Wczytuje dokładnie buffer.Length bajtów lub zgłasza błąd obciętego pliku.</summary>
     public static void ReadExactly(Stream s, Span<byte> buffer, string what)
     {
         int total = 0;
@@ -37,7 +30,6 @@ internal static class StreamHelpers
         }
     }
 
-    /// <summary>Pomija n bajtów strumienia.</summary>
     public static void Skip(Stream s, long n)
     {
         var scratch = new byte[(int)Math.Min(n, 64 * 1024)];

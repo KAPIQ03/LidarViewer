@@ -1,13 +1,7 @@
 namespace LidarViewer.Core.Readers;
 
-/// <summary>Położenie jednej wartości (pola) wewnątrz wiersza binarnego.</summary>
 internal readonly record struct Column(int Offset, ScalarType Type);
 
-/// <summary>
-/// Czyta punkty zapisane jako ciąg równych wierszy binarnych (PLY binary, PCD binary):
-/// wczytuje je porcjami (~1 MB) i dla każdego wiersza wyciąga x, y, z oraz opcjonalnie
-/// intensywność i kategorię z podanych pól.
-/// </summary>
 internal static class BinaryRows
 {
     public static void Read(

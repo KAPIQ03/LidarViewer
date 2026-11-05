@@ -35,7 +35,6 @@ public class PcdReaderTests : TempDirTestBase
     [Fact]
     public void Read_BinaryCompressed_ColumnMajorLzf()
     {
-        // Układ kolumnowy: x0 x1 y0 y1 z0 z1 i0 i1; kompresja "tylko bajty dosłowne" (bajt kontrolny 0..31).
         float[] columnar = [1f, 4f, 2f, 5f, 3f, 6f, 10f, 20f];
         byte[] raw = ToBytes(columnar);
         var packed = new List<byte>();
@@ -80,7 +79,6 @@ public class PcdReaderTests : TempDirTestBase
     [Fact]
     public void Lzf_BackReferenceWithOverlap()
     {
-        // 'A' dosłownie, potem odwołanie: długość 2+2=4, przesunięcie 1 -> "AAAAA".
         byte[] packed = [0x00, (byte)'A', 0x40, 0x00];
 
         Assert.Equal("AAAAA"u8.ToArray(), Lzf.Decompress(packed, 5));

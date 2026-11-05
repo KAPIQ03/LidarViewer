@@ -1,11 +1,5 @@
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Dekompresja LZF (liblzf) - algorytm używany przez PCD "binary_compressed".
-/// Strumień składa się z bloków: bajt kontrolny &lt; 32 oznacza (ctrl+1) bajtów dosłownych,
-/// a wartość &gt;= 32 oznacza odwołanie wstecz: długość = (ctrl &gt;&gt; 5) [+ następny bajt, gdy 7] + 2,
-/// przesunięcie = ((ctrl &amp; 0x1f) &lt;&lt; 8) + następny bajt + 1.
-/// </summary>
 internal static class Lzf
 {
     public static byte[] Decompress(ReadOnlySpan<byte> input, int outputLength)
@@ -18,7 +12,7 @@ internal static class Lzf
             int ctrl = input[ip++];
             if (ctrl < 32)
             {
-                int run = ctrl + 1; // bajty dosłowne
+                int run = ctrl + 1;
                 if (ip + run > input.Length || op + run > outputLength)
                     throw new InvalidDataException("Uszkodzone dane LZF (bajty dosłowne).");
                 input.Slice(ip, run).CopyTo(output.AsSpan(op));
@@ -27,7 +21,7 @@ internal static class Lzf
             }
             else
             {
-                int len = ctrl >> 5; // odwołanie wstecz
+                int len = ctrl >> 5;
                 if (len == 7)
                 {
                     if (ip >= input.Length) throw new InvalidDataException("Uszkodzone dane LZF (długość).");
@@ -38,7 +32,7 @@ internal static class Lzf
                 len += 2;
                 if (reference < 0 || op + len > outputLength)
                     throw new InvalidDataException("Uszkodzone dane LZF (odwołanie poza zakresem).");
-                for (int k = 0; k < len; k++) // kopiowanie bajt po bajcie: zakresy mogą się nakładać
+                for (int k = 0; k < len; k++)
                     output[op++] = output[reference++];
             }
         }

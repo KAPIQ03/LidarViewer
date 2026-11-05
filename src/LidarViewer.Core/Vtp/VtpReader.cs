@@ -6,40 +6,17 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Vtp;
 
-/// <summary>
-/// Czytnik plików VTK PolyData (.vtp) zapisanych w trybie "appended raw".
-///
-/// Struktura takiego pliku:
-///   1. Nagłówek XML (opis tablic: nazwa, typ, offset) - kończy się przed znacznikiem
-///      &lt;AppendedData encoding="raw"&gt;.
-///   2. Po znaczniku &lt;AppendedData&gt; stoi pojedynczy znak '_', a za nim surowe dane binarne.
-///   3. Każda tablica leży pod swoim "offset" (liczonym od znaku po '_'). Na początku
-///      bloku jest długość w bajtach (UInt32 lub UInt64 - wg atrybutu header_type),
-///      potem same dane (little-endian).
-///
-/// Algorytm:
-///   a) wczytaj początek pliku aż do znacznika &lt;AppendedData&gt; i znaku '_',
-///   b) sparsuj nagłówek jako XML (po dopisaniu zamykającego &lt;/VTKFile&gt;),
-///   c) dla tablicy Points oraz PointData (intensity, category) odczytaj blok binarny
-///      spod właściwego offsetu bezpośrednio z pliku (bez wczytywania całości do RAM).
-///
-/// Obsługiwane jest wyłącznie to, co występuje w plikach z lidaru; pozostałe warianty
-/// (ascii, base64, kompresja) kończą się czytelnym NotSupportedException.
-/// </summary>
 public static class VtpReader
 {
     private const string AppendedMarker = "<AppendedData";
-    private const int MaxHeaderBytes = 16 * 1024 * 1024; // zabezpieczenie przed błędnym plikiem
+    private const int MaxHeaderBytes = 16 * 1024 * 1024;
 
-    /// <summary>Wczytuje chmurę punktów z pliku .vtp.</summary>
     public static PointCloud Read(string path)
     {
         using var handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        // --- a) nagłówek XML + pozycja początku danych binarnych ---
         var (headerXml, dataStart) = ReadHeader(handle);
 
-        // --- b) parsowanie nagłówka ---
         XDocument doc;
         try
         {
@@ -53,18 +30,15 @@ public static class VtpReader
         var root = doc.Root ?? throw new InvalidDataException("Brak elementu głównego VTKFile.");
         ValidateRoot(root);
 
-        // header_type określa rozmiar pola długości przed każdym blokiem (domyślnie UInt32).
         int lengthFieldSize = (string?)root.Attribute("header_type") == "UInt64" ? 8 : 4;
 
         var piece = root.Descendants("Piece").FirstOrDefault()
             ?? throw new InvalidDataException("Brak elementu Piece.");
         int pointCount = int.Parse(
             (string?)piece.Attribute("NumberOfPoints") ?? "0", CultureInfo.InvariantCulture);
-        // 3 floaty na punkt muszą się zmieścić w int (limit tablicy .NET).
         if (pointCount < 0 || pointCount > int.MaxValue / 3)
             throw new InvalidDataException($"Niepoprawna liczba punktów: {pointCount}.");
 
-        // --- c) odczyt tablic ---
         var pointsArray = piece.Element("Points")?.Element("DataArray")
             ?? throw new InvalidDataException("Brak tablicy Points.");
         float[] positions = ReadPositions(handle, dataStart, lengthFieldSize, pointsArray, pointCount);
@@ -84,11 +58,6 @@ public static class VtpReader
         return new PointCloud(positions, intensity, category);
     }
 
-    /// <summary>
-    /// Czyta początek pliku, aż znajdzie &lt;AppendedData ...&gt; i znak '_'.
-    /// Zwraca tekst nagłówka (zamknięty tagiem &lt;/VTKFile&gt;) i bezwzględną pozycję
-    /// pierwszego bajtu danych (zaraz za '_').
-    /// </summary>
     private static (string HeaderXml, long DataStart) ReadHeader(SafeFileHandle handle)
     {
         var markerBytes = Encoding.ASCII.GetBytes(AppendedMarker);
@@ -114,11 +83,9 @@ public static class VtpReader
             int markerPos = buffer.AsSpan(0, filled).IndexOf(markerBytes);
             if (markerPos < 0) continue;
 
-            // Szukamy '_' po znaczniku - od niego zaczynają się dane.
             int underscore = buffer.AsSpan(markerPos, filled - markerPos).IndexOf((byte)'_');
-            if (underscore < 0) continue; // jeszcze nie wczytano - czytamy dalej
+            if (underscore < 0) continue;
 
-            // Atrybut encoding znajduje się w tagu AppendedData (przed '_').
             string tag = Encoding.ASCII.GetString(buffer, markerPos, underscore);
             if (!tag.Contains("encoding=\"raw\"", StringComparison.Ordinal))
                 throw new NotSupportedException("Obsługiwane jest tylko AppendedData z encoding=\"raw\".");
@@ -128,7 +95,6 @@ public static class VtpReader
         }
     }
 
-    /// <summary>Sprawdza, czy plik jest typu PolyData, little-endian i bez kompresji.</summary>
     private static void ValidateRoot(XElement root)
     {
         if ((string?)root.Attribute("type") != "PolyData")
@@ -139,7 +105,6 @@ public static class VtpReader
             throw new NotSupportedException("Skompresowane dane VTP nie są jeszcze obsługiwane.");
     }
 
-    /// <summary>Czyta pozycje punktów i zwraca je jako float[3*N] (Float64 jest zawężane do float).</summary>
     private static float[] ReadPositions(
         SafeFileHandle handle, long dataStart, int lengthFieldSize,
         XElement array, int pointCount)
@@ -163,10 +128,6 @@ public static class VtpReader
         throw new NotSupportedException($"Nieobsługiwany typ współrzędnych: {type}.");
     }
 
-    /// <summary>
-    /// Czyta jeden blok z sekcji AppendedData: [długość][dane]. Weryfikuje, że długość
-    /// zgadza się z oczekiwaną (elementCount * elementSize) i że format to "appended".
-    /// </summary>
     private static byte[] ReadBlock(
         SafeFileHandle handle, long dataStart, int lengthFieldSize,
         XElement array, int elementCount, int elementSize)
@@ -180,7 +141,6 @@ public static class VtpReader
             throw new InvalidDataException($"Tablica '{name}': ujemny offset.");
         long blockStart = dataStart + offset;
 
-        // Pole długości bloku (w bajtach).
         Span<byte> lengthBytes = stackalloc byte[8];
         lengthBytes = lengthBytes[..lengthFieldSize];
         ReadExactly(handle, lengthBytes, blockStart, name);
@@ -198,7 +158,6 @@ public static class VtpReader
         return data;
     }
 
-    /// <summary>Wczytuje dokładnie buffer.Length bajtów od zadanej pozycji lub zgłasza błąd obciętego pliku.</summary>
     private static void ReadExactly(
         SafeFileHandle handle, Span<byte> buffer, long position, string arrayName)
     {

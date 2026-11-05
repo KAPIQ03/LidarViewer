@@ -1,9 +1,5 @@
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Zbiera punkty dodawane po jednym (z czytników tekstowych i binarnych wierszy)
-/// i na końcu buduje PointCloud. Atrybuty opcjonalne są zbierane tylko, gdy plik je ma.
-/// </summary>
 internal sealed class PointAccumulator
 {
     private readonly List<float> _positions;
@@ -12,7 +8,7 @@ internal sealed class PointAccumulator
 
     public PointAccumulator(bool hasIntensity, bool hasCategory, long expectedCount = 0)
     {
-        int capacity = (int)Math.Clamp(expectedCount, 0, 1 << 24); // ograniczenie przy błędnym nagłówku
+        int capacity = (int)Math.Clamp(expectedCount, 0, 1 << 24);
         _positions = new List<float>(capacity * 3);
         _intensity = hasIntensity ? new List<byte>(capacity) : null;
         _category = hasCategory ? new List<int>(capacity) : null;

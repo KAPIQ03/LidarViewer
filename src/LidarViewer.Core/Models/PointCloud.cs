@@ -2,36 +2,20 @@ using System.Numerics;
 
 namespace LidarViewer.Core.Models;
 
-/// <summary>
-/// Chmura punktów w pamięci: jedna "klatka" danych z lidaru.
-/// Pozycje są trzymane w płaskiej tablicy float (x0,y0,z0,x1,y1,z1,...),
-/// bo taki układ można bez kopiowania wgrać do bufora OpenGL (VBO).
-/// </summary>
 public sealed class PointCloud
 {
-    /// <summary>Pozycje punktów: 3 floaty (X, Y, Z) na punkt.</summary>
     public float[] Positions { get; }
 
-    /// <summary>Intensywność odbicia (0-255) na punkt; null, gdy plik jej nie zawiera.</summary>
     public byte[]? Intensity { get; }
 
-    /// <summary>Kategoria punktu; null, gdy plik jej nie zawiera.</summary>
     public int[]? Category { get; }
 
-    /// <summary>
-    /// Początek układu współrzędnych (w jednostkach pliku, double). Format z dużymi
-    /// współrzędnymi (np. LAS w układzie państwowym) zapisujemy jako pozycje float
-    /// względem tego punktu, żeby nie tracić precyzji; rzeczywiste położenie = Origin + Positions.
-    /// </summary>
     public (double X, double Y, double Z) Origin { get; init; }
 
-    /// <summary>Liczba punktów w chmurze.</summary>
     public int Count => Positions.Length / 3;
 
-    /// <summary>Minimalny narożnik prostopadłościanu otaczającego chmurę.</summary>
     public Vector3 BoundsMin { get; }
 
-    /// <summary>Maksymalny narożnik prostopadłościanu otaczającego chmurę.</summary>
     public Vector3 BoundsMax { get; }
 
     public PointCloud(float[] positions, byte[]? intensity = null, int[]? category = null)
@@ -45,10 +29,8 @@ public sealed class PointCloud
         (BoundsMin, BoundsMax) = ComputeBounds(positions);
     }
 
-    /// <summary>Środek prostopadłościanu otaczającego - używany do wyśrodkowania widoku.</summary>
     public Vector3 Center => (BoundsMin + BoundsMax) / 2f;
 
-    /// <summary>Promień kuli opisanej na prostopadłościanie - używany do doboru odległości kamery.</summary>
     public float Radius => Vector3.Distance(BoundsMin, BoundsMax) / 2f;
 
     private static (Vector3 Min, Vector3 Max) ComputeBounds(float[] p)
@@ -67,11 +49,6 @@ public sealed class PointCloud
         return (min, max);
     }
 
-    /// <summary>
-    /// Zwraca chmurę bez punktów o nieskończonych lub nieokreślonych (NaN) współrzędnych.
-    /// Takie punkty zdarzają się w PCD/PLY/CSV (np. brak odbicia) i psułyby wyliczenie
-    /// zakresu, a więc i widok. Gdy wszystkie punkty są poprawne, zwraca ten sam obiekt.
-    /// </summary>
     public PointCloud WithoutInvalidPoints()
     {
         int valid = 0;

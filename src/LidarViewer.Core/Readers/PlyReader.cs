@@ -3,20 +3,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Czytnik plików PLY (Stanford Polygon File Format) - ascii oraz binary little/big endian.
-///
-/// Budowa pliku: nagłówek tekstowy zakończony linią "end_header", potem dane kolejnych
-/// elementów (element vertex, element face, ...). Nagłówek opisuje każdy element i jego
-/// właściwości (property typ nazwa), więc układ wiersza punktu (które pola, jakich typów)
-/// poznajemy dopiero z nagłówka.
-///
-/// Algorytm:
-///  1. Wczytaj nagłówek: format, lista elementów z właściwościami.
-///  2. Pomiń elementy stojące przed "vertex" (linie w ascii, bajty w binary).
-///  3. Z elementu "vertex" wyciągnij x, y, z (+ opcjonalnie "intensity").
-///     Ściany (face) i dalsze elementy są ignorowane - liczą się tylko punkty.
-/// </summary>
 public static class PlyReader
 {
     private sealed record Property(string Name, ScalarType Type, bool IsList);
@@ -98,7 +84,6 @@ public static class PlyReader
         }
         else
         {
-            // Układ wiersza binarnego: właściwości jedna po drugiej, bez wyrównania.
             var offsets = new int[e.Properties.Count];
             int stride = 0;
             for (int i = 0; i < offsets.Length; i++)
@@ -113,7 +98,6 @@ public static class PlyReader
         return acc.ToCloud();
     }
 
-    /// <summary>Pomija dane elementu stojącego przed vertex.</summary>
     private static void SkipElement(Stream s, Element e, string format)
     {
         if (format == "ascii")

@@ -4,19 +4,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Czytnik plików VTK w formacie "legacy" (.vtk): zbiory z sekcją POINTS (POLYDATA,
-/// UNSTRUCTURED_GRID, STRUCTURED_GRID), zapis ASCII albo BINARY.
-///
-/// Budowa pliku: linia "# vtk DataFile Version x.y", tytuł, tryb (ASCII/BINARY), "DATASET typ",
-/// potem sekcje: POINTS n typ + dane, opcjonalnie VERTICES/LINES/POLYGONS/CELLS/CELL_TYPES,
-/// CELL_DATA i POINT_DATA z atrybutami (SCALARS, FIELD, ...).
-/// W trybie BINARY liczby są zapisane w kolejności BIG-ENDIAN.
-///
-/// Algorytm: przeskocz do słowa POINTS, wczytaj 3*n liczb, a potem przejdź po kolejnych sekcjach,
-/// pomijając dane komórek i atrybuty, których nie potrzebujemy - zatrzymując się na pierwszym
-/// nieznanym słowie. Z POINT_DATA zbieramy skalary o nazwie "intensity" i "category".
-/// </summary>
 public static class VtkReader
 {
     public static PointCloud Read(string path)
@@ -25,14 +12,13 @@ public static class VtkReader
 
         if (sc.ReadLine()?.StartsWith("# vtk DataFile", StringComparison.OrdinalIgnoreCase) != true)
             throw new InvalidDataException("To nie jest plik VTK (brak nagłówka '# vtk DataFile').");
-        sc.ReadLine(); // tytuł
+        sc.ReadLine();
 
         string mode = sc.ReadToken()?.ToUpperInvariant() ?? "";
         if (mode is not ("ASCII" or "BINARY"))
             throw new NotSupportedException($"Nieobsługiwany tryb zapisu VTK: '{mode}'.");
         bool binary = mode == "BINARY";
 
-        // --- POINTS ---
         string? token;
         while ((token = sc.ReadToken()) != null && !token.Equals("POINTS", StringComparison.OrdinalIgnoreCase)) { }
         if (token == null)
@@ -47,17 +33,16 @@ public static class VtkReader
         var positions = new float[count * 3];
         for (int i = 0; i < positions.Length; i++) positions[i] = (float)xyz[i];
 
-        // --- kolejne sekcje ---
         byte[]? intensity = null;
         int[]? category = null;
         bool inPointData = false;
-        long attributeCount = count; // liczba wartości w atrybucie: punktów (POINT_DATA) lub komórek (CELL_DATA)
+        long attributeCount = count;
         while ((token = sc.ReadToken()) != null)
         {
             switch (token.ToUpperInvariant())
             {
                 case "VERTICES" or "LINES" or "POLYGONS" or "TRIANGLE_STRIPS" or "CELLS":
-                    sc.ReadToken(); // liczba komórek
+                    sc.ReadToken();
                     long size = ParseInt(sc.ReadToken());
                     BeginBinary(sc, binary);
                     SkipValues(sc, binary, ScalarType.Int32, size);
@@ -83,15 +68,13 @@ public static class VtkReader
                         if (int.TryParse(sc.PeekToken(), out int nc)) { components = nc; sc.ReadToken(); }
                         if (!"LOOKUP_TABLE".Equals(sc.ReadToken(), StringComparison.OrdinalIgnoreCase))
                             throw new InvalidDataException("VTK: po SCALARS oczekiwano LOOKUP_TABLE.");
-                        sc.ReadToken(); // nazwa tablicy kolorów
+                        sc.ReadToken();
                         BeginBinary(sc, binary);
-                        // Atrybuty komórek (CELL_DATA) tylko pomijamy; z POINT_DATA zbieramy intensity/category.
                         CollectOrSkip(sc, binary, type, attributeCount * components, inPointData ? name : "", components,
                             ref intensity, ref category);
                         break;
                     }
                 default:
-                    // Nieznana/niewspierana sekcja (FIELD, VECTORS, ...): dane punktów już mamy, kończymy.
                     return Build(positions, intensity, category);
             }
         }
@@ -101,7 +84,6 @@ public static class VtkReader
     private static PointCloud Build(float[] positions, byte[]? intensity, int[]? category) =>
         new(positions, intensity, category);
 
-    /// <summary>Czyta skalary i zachowuje je, jeśli to "intensity" lub "category" w POINT_DATA; w przeciwnym razie pomija.</summary>
     private static void CollectOrSkip(
         ByteScanner sc, bool binary, ScalarType type, long total, string name, int components,
         ref byte[]? intensity, ref int[]? category)
@@ -127,7 +109,6 @@ public static class VtkReader
         }
     }
 
-    /// <summary>W trybie BINARY dane zaczynają się zaraz po końcu linii nagłówka sekcji - przeskakujemy ją.</summary>
     private static void BeginBinary(ByteScanner sc, bool binary)
     {
         if (binary) sc.SkipLine();
@@ -180,7 +161,6 @@ public static class VtkReader
         _ => throw new NotSupportedException($"Nieobsługiwany typ danych VTK: '{name}'."),
     };
 
-    /// <summary>Prosty skaner po tablicy bajtów: słowa rozdzielone białymi znakami, linie i bloki binarne.</summary>
     private sealed class ByteScanner(byte[] data)
     {
         private int _pos;
@@ -210,11 +190,10 @@ public static class VtkReader
             int start = _pos;
             while (_pos < data.Length && data[_pos] != '\n') _pos++;
             string line = Encoding.ASCII.GetString(data, start, _pos - start).TrimEnd('\r');
-            if (_pos < data.Length) _pos++; // zjedz '\n'
+            if (_pos < data.Length) _pos++;
             return line;
         }
 
-        /// <summary>Przeskakuje resztę bieżącej linii razem ze znakiem końca linii.</summary>
         public void SkipLine() => ReadLine();
 
         public ReadOnlySpan<byte> ReadBytes(long length)

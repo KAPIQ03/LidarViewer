@@ -3,29 +3,14 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Czytnik plików LAS (ASPRS LAS 1.0-1.4, formaty punktów 0-10). Skompresowane LAZ nie są obsługiwane.
-///
-/// Budowa pliku: stały nagłówek binarny (little-endian), opcjonalne rekordy VLR, potem tablica
-/// rekordów punktów o jednakowej długości. Położenia pól w nagłówku (bajty):
-///   94 rozmiar nagłówka, 96 offset danych punktów, 104 format rekordu, 105 długość rekordu,
-///   107 liczba punktów (1.4: uint64 pod 247), 131/139/147 skala XYZ, 155/163/171 przesunięcie XYZ.
-/// Każdy rekord zaczyna się od X, Y, Z jako int32; rzeczywista współrzędna = wartość * skala + przesunięcie.
-/// Dalej: intensywność (uint16, bajt 12) i klasyfikacja (bajt 15 dla formatów 0-5, bajt 16 dla 6-10).
-///
-/// Współrzędne LAS bywają ogromne (układy państwowe), a float ma tylko ~7 cyfr, więc od wszystkich
-/// punktów odejmujemy minimum (PointCloud.Origin) - pozycje float są względem niego.
-/// </summary>
 public static class LasReader
 {
-    // Minimalna długość rekordu dla formatów 0-10.
     private static readonly int[] MinRecordLength = [20, 28, 26, 34, 57, 63, 30, 36, 38, 59, 67];
 
     public static PointCloud Read(string path)
     {
         using var file = File.OpenRead(path);
 
-        // --- nagłówek ---
         var header = new byte[375];
         int headerRead = file.Read(header, 0, header.Length);
         if (headerRead < 227 || header[0] != 'L' || header[1] != 'A' || header[2] != 'S' || header[3] != 'F')
@@ -46,7 +31,7 @@ public static class LasReader
 
         long count = BinaryPrimitives.ReadUInt32LittleEndian(h[107..]);
         if (count == 0 && versionMinor >= 4 && headerRead >= 375)
-            count = (long)BinaryPrimitives.ReadUInt64LittleEndian(h[247..]); // LAS 1.4: 64-bitowa liczba punktów
+            count = (long)BinaryPrimitives.ReadUInt64LittleEndian(h[247..]);
         if (count > int.MaxValue / 3)
             throw new InvalidDataException($"Za duża liczba punktów: {count}.");
 
@@ -57,7 +42,6 @@ public static class LasReader
         double offsetY = BinaryPrimitives.ReadDoubleLittleEndian(h[163..]);
         double offsetZ = BinaryPrimitives.ReadDoubleLittleEndian(h[171..]);
 
-        // --- rekordy punktów, czytane porcjami ---
         int n = (int)count;
         var rawX = new int[n];
         var rawY = new int[n];
@@ -65,7 +49,7 @@ public static class LasReader
         var intensity = new ushort[n];
         var category = new int[n];
         int classOffset = format <= 5 ? 15 : 16;
-        int classMask = format <= 5 ? 0x1F : 0xFF; // w formatach 0-5 górne 3 bity to flagi
+        int classMask = format <= 5 ? 0x1F : 0xFF;
 
         file.Seek(pointDataOffset, SeekOrigin.Begin);
         int rowsPerChunk = Math.Max(1, (1 << 20) / recordLength);
@@ -89,19 +73,15 @@ public static class LasReader
 
         if (n == 0) return new PointCloud([]);
 
-        // --- przeliczenie na float względem minimum (Origin) ---
         int minX = rawX.Min(), minY = rawY.Min(), minZ = rawZ.Min();
         var positions = new float[n * 3];
         for (int i = 0; i < n; i++)
         {
-            // Różnicę liczymy na long (bez przepełnienia int), a mnożenie przez skalę na double.
             positions[i * 3] = (float)(((long)rawX[i] - minX) * scaleX);
             positions[i * 3 + 1] = (float)(((long)rawY[i] - minY) * scaleY);
             positions[i * 3 + 2] = (float)(((long)rawZ[i] - minZ) * scaleZ);
         }
 
-        // Intensywność 16-bitowa -> bajt: jeśli wszystkie wartości mieszczą się w 0-255, zostawiamy je,
-        // w przeciwnym razie skalujemy (>> 8).
         int shift = intensity.Max() <= 255 ? 0 : 8;
         var intensityBytes = new byte[n];
         for (int i = 0; i < n; i++) intensityBytes[i] = (byte)(intensity[i] >> shift);

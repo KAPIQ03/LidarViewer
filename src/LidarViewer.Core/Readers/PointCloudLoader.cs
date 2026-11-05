@@ -3,11 +3,6 @@ using LidarViewer.Core.Vtp;
 
 namespace LidarViewer.Core.Readers;
 
-/// <summary>
-/// Jedno wejście do wczytywania chmur punktów: wybiera czytnik po rozszerzeniu pliku,
-/// a wynik oczyszcza z punktów o nieskończonych/NaN współrzędnych. Interfejs użytkownika
-/// zna tylko tę klasę, więc dodanie nowego formatu = dopisanie jednej linijki poniżej.
-/// </summary>
 public static class PointCloudLoader
 {
     private static readonly Dictionary<string, Func<string, PointCloud>> Readers =
