@@ -85,8 +85,8 @@ public partial class MainViewModel : ViewModelBase
 
     public string LegendTitle => ColorMode switch
     {
-        ColorMode.Intensity => "Intensywnosc",
-        ColorMode.Distance => "Odleglosc od sensora",
+        ColorMode.Intensity => "Intensywność",
+        ColorMode.Distance => "Odległość od sensora",
         _ => "Jednolity",
     };
 
