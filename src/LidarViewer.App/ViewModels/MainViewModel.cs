@@ -100,17 +100,17 @@ public partial class MainViewModel : ViewModelBase
         get
         {
             if (ColorMode == ColorMode.Intensity && !HasIntensity)
-                return "Ten plik nie zawiera atrybutu intensity - punkty sa pokazane na szaro.";
+                return "Ten plik nie zawiera atrybutu intensity - punkty są pokazane na szaro.";
 
             if (ColorMode == ColorMode.Solid)
                 return null;
 
             if (ColorSettings.IsDegenerate)
-                return "Zakres kolorow jest pusty (min >= max) - wszystkie punkty maja jeden kolor.";
+                return "Zakres kolorów jest pusty (min >= max) - wszystkie punkty mają jeden kolor.";
 
             var attribute = PointCloud?.GetAttribute(CurrentScalarKind);
             if (attribute is not null && (attribute.Min > ColorRangeMax || attribute.Max < ColorRangeMin))
-                return "Zakres kolorow lezy poza danymi - wszystkie punkty maja jeden kolor.";
+                return "Zakres kolorów leży poza danymi - wszystkie punkty mają jeden kolor.";
 
             return null;
         }
