@@ -121,6 +121,40 @@ public class PointAttributeTests
     {
         Assert.Throws<ArgumentNullException>(() => new PointAttribute("x", null!));
     }
+
+    [Fact]
+    public void Constructor_IgnoresInfinity()
+    {
+        var attr = new PointAttribute("x", [0f, float.PositiveInfinity, 10f]);
+
+        Assert.Equal(0f, attr.Min);
+        Assert.Equal(10f, attr.Max);
+    }
+
+    [Fact]
+    public void Constructor_ExtremeValues_AreNotTreatedAsEmpty()
+    {
+        var attr = new PointAttribute("x", [float.MaxValue, 5f]);
+
+        Assert.Equal(5f, attr.Min);
+        Assert.Equal(float.MaxValue, attr.Max);
+
+        var single = new PointAttribute("x", [float.MaxValue]);
+
+        Assert.Equal(float.MaxValue, single.Min);
+        Assert.Equal(float.MaxValue, single.Max);
+
+        var lowest = new PointAttribute("x", [float.MinValue]);
+
+        Assert.Equal(float.MinValue, lowest.Min);
+        Assert.Equal(float.MinValue, lowest.Max);
+    }
+
+    [Fact]
+    public void Constructor_NullName_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => new PointAttribute(null!, []));
+    }
 }
 ```
 
@@ -153,24 +187,26 @@ public sealed class PointAttribute
         Name = name;
         Values = values;
 
-        if (values.Length == 0)
+        bool hasValue = false;
+        float min = float.MaxValue;
+        float max = float.MinValue;
+        foreach (float value in values)
+        {
+            if (!float.IsFinite(value)) continue;
+            hasValue = true;
+            if (value < min) min = value;
+            if (value > max) max = value;
+        }
+
+        if (!hasValue)
         {
             Min = 0f;
             Max = 0f;
             return;
         }
 
-        float min = float.MaxValue;
-        float max = float.MinValue;
-        foreach (float value in values)
-        {
-            if (float.IsNaN(value)) continue;
-            if (value < min) min = value;
-            if (value > max) max = value;
-        }
-
-        Min = min == float.MaxValue ? 0f : min;
-        Max = max == float.MinValue ? 0f : max;
+        Min = min;
+        Max = max;
     }
 }
 ```
@@ -190,7 +226,7 @@ public enum ScalarKind
 - [ ] **Step 4: Uruchom test — ma przejść**
 
 Run: `dotnet test tests/LidarViewer.Core.Tests/LidarViewer.Core.Tests.csproj --filter "FullyQualifiedName~PointAttributeTests"`
-Expected: PASS — 4 testy.
+Expected: PASS — 7 testów.
 
 - [ ] **Step 5: Commit**
 

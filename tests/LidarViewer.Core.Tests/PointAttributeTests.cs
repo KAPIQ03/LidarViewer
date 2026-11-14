@@ -37,4 +37,38 @@ public class PointAttributeTests
     {
         Assert.Throws<ArgumentNullException>(() => new PointAttribute("x", null!));
     }
+
+    [Fact]
+    public void Constructor_IgnoresInfinity()
+    {
+        var attr = new PointAttribute("x", [0f, float.PositiveInfinity, 10f]);
+
+        Assert.Equal(0f, attr.Min);
+        Assert.Equal(10f, attr.Max);
+    }
+
+    [Fact]
+    public void Constructor_ExtremeValues_AreNotTreatedAsEmpty()
+    {
+        var attr = new PointAttribute("x", [float.MaxValue, 5f]);
+
+        Assert.Equal(5f, attr.Min);
+        Assert.Equal(float.MaxValue, attr.Max);
+
+        var single = new PointAttribute("x", [float.MaxValue]);
+
+        Assert.Equal(float.MaxValue, single.Min);
+        Assert.Equal(float.MaxValue, single.Max);
+
+        var lowest = new PointAttribute("x", [float.MinValue]);
+
+        Assert.Equal(float.MinValue, lowest.Min);
+        Assert.Equal(float.MinValue, lowest.Max);
+    }
+
+    [Fact]
+    public void Constructor_NullName_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => new PointAttribute(null!, []));
+    }
 }

@@ -18,23 +18,25 @@ public sealed class PointAttribute
         Name = name;
         Values = values;
 
-        if (values.Length == 0)
+        bool hasValue = false;
+        float min = float.MaxValue;
+        float max = float.MinValue;
+        foreach (float value in values)
+        {
+            if (!float.IsFinite(value)) continue;
+            hasValue = true;
+            if (value < min) min = value;
+            if (value > max) max = value;
+        }
+
+        if (!hasValue)
         {
             Min = 0f;
             Max = 0f;
             return;
         }
 
-        float min = float.MaxValue;
-        float max = float.MinValue;
-        foreach (float value in values)
-        {
-            if (float.IsNaN(value)) continue;
-            if (value < min) min = value;
-            if (value > max) max = value;
-        }
-
-        Min = min == float.MaxValue ? 0f : min;
-        Max = max == float.MinValue ? 0f : max;
+        Min = min;
+        Max = max;
     }
 }
