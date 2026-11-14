@@ -45,12 +45,24 @@ public static class CloudColors
 
         var ramp = new ColorRamp(settings.Map, settings.Min, settings.Max);
         var values = attribute.Values;
-        for (int i = 0; i < count; i++)
+
+        // Tablica atrybutu moze byc krotsza niz liczba punktow (uszkodzony plik),
+        // wiec nie wolno indeksowac jej poza zakresem.
+        int colored = Math.Min(count, values.Length);
+        for (int i = 0; i < colored; i++)
         {
             var color = ramp.ColorAt(values[i]);
             rgba[i * 4] = color.R;
             rgba[i * 4 + 1] = color.G;
             rgba[i * 4 + 2] = color.B;
+            rgba[i * 4 + 3] = 0xFF;
+        }
+
+        for (int i = colored; i < count; i++)
+        {
+            rgba[i * 4] = FallbackGray;
+            rgba[i * 4 + 1] = FallbackGray;
+            rgba[i * 4 + 2] = FallbackGray;
             rgba[i * 4 + 3] = 0xFF;
         }
 

@@ -991,6 +991,68 @@ public class CloudColorsTests
 
         Assert.Empty(rgba);
     }
+
+    [Fact]
+    public void Build_IntensityShorterThanPointCount_DoesNotThrowAndFallsBackToGray()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f, 1f, 1f, 1f, 2f, 2f, 2f], [0]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.Intensity,
+            Map = ColormapKind.Grayscale,
+            Min = 0f,
+            Max = 255f,
+        });
+
+        Assert.Equal(12, rgba.Length);
+        Assert.Equal((byte)0, rgba[0]);
+        Assert.Equal((byte)128, rgba[4]);
+        Assert.Equal((byte)128, rgba[8]);
+    }
+
+    [Fact]
+    public void Build_RampMode_WritesRgbaInOrder()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f], [255]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.Intensity,
+            Map = ColormapKind.Viridis,
+            Min = 0f,
+            Max = 255f,
+        });
+
+        Assert.Equal([(byte)253, (byte)231, (byte)37, (byte)255], rgba);
+    }
+
+    [Fact]
+    public void Build_DegenerateRange_FillsCloudWithSingleColor()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f, 1f, 1f, 1f], [0, 255]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.Intensity,
+            Map = ColormapKind.Grayscale,
+            Min = 5f,
+            Max = 5f,
+        });
+
+        Assert.Equal((byte)0, rgba[0]);
+        Assert.Equal((byte)0, rgba[4]);
+    }
+
+    [Fact]
+    public void Build_FallbackGray_IsOpaque()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings { Mode = ColorMode.Intensity });
+
+        Assert.Equal([(byte)128, (byte)128, (byte)128, (byte)255], rgba);
+    }
 }
 ```
 
@@ -1050,12 +1112,24 @@ public static class CloudColors
 
         var ramp = new ColorRamp(settings.Map, settings.Min, settings.Max);
         var values = attribute.Values;
-        for (int i = 0; i < count; i++)
+
+        // Tablica atrybutu moze byc krotsza niz liczba punktow (uszkodzony plik),
+        // wiec nie wolno indeksowac jej poza zakresem.
+        int colored = Math.Min(count, values.Length);
+        for (int i = 0; i < colored; i++)
         {
             var color = ramp.ColorAt(values[i]);
             rgba[i * 4] = color.R;
             rgba[i * 4 + 1] = color.G;
             rgba[i * 4 + 2] = color.B;
+            rgba[i * 4 + 3] = 0xFF;
+        }
+
+        for (int i = colored; i < count; i++)
+        {
+            rgba[i * 4] = FallbackGray;
+            rgba[i * 4 + 1] = FallbackGray;
+            rgba[i * 4 + 2] = FallbackGray;
             rgba[i * 4 + 3] = 0xFF;
         }
 
@@ -1067,7 +1141,7 @@ public static class CloudColors
 - [ ] **Step 4: Uruchom test — ma przejść**
 
 Run: `dotnet test tests/LidarViewer.Core.Tests/LidarViewer.Core.Tests.csproj --filter "FullyQualifiedName~CloudColorsTests"`
-Expected: PASS — 5 testów.
+Expected: PASS — 9 testów.
 
 - [ ] **Step 5: Uruchom cały zestaw testów**
 
@@ -1118,6 +1192,14 @@ W `PointCloudView3D.cs` zamień stałe `VertexShader` i `FragmentShader` na:
         }
         """;
 ```
+
+**Uwaga — kanał alfa.** Bufor kolorów trzyma 4 bajty na punkt (RGBA), ale renderer
+nie włącza mieszania (`GL_BLEND` nie jest włączany) — rysowanie jest w pełni
+nieprzezroczyste z testem głębi. Kanał alfa z `ColorSettings.Solid.A` trafia więc do
+bufora, ale nie wpływa na obraz. Nie dodawaj mieszania w tym etapie: punkty nie są
+sortowane głębokościowo, więc przezroczyste punkty dawałyby artefakty. W etapie 1
+nie ma też wyboru koloru jednolitego w UI, więc `Solid` zawsze używa domyślnego
+koloru o alfie `0xFF`.
 
 - [ ] **Step 2: Dodaj właściwość `ColorSettings`**
 
@@ -1461,7 +1543,6 @@ a w klasie po `public partial string? Diagnostics { get; set; }` dodaj:
 ```
 
 - [ ] **Step 2: Dodaj automatyczne dopasowanie zakresu**
-
 W `MainViewModel.cs` dodaj metody:
 
 ```csharp
@@ -1499,7 +1580,35 @@ W `MainViewModel.cs` dodaj metody:
 
 oraz `using LidarViewer.Core.Models;` (jest już).
 
-- [ ] **Step 3: Wywołaj `ApplyAutoRange` po wczytaniu pliku**
+- [ ] **Step 3: Dodaj diagnostykę trybu kolorowania**
+
+Roadmapa wymaga, żeby brak atrybutu intensity był **widać w UI**, a nie był cichym
+zastępstwem szarością. Dodaj do `MainViewModel`:
+
+```csharp
+    public bool HasIntensity => PointCloud?.GetAttribute(ScalarKind.Intensity) is not null;
+
+    public string? ColorWarning
+    {
+        get
+        {
+            if (ColorMode == ColorMode.Intensity && !HasIntensity)
+                return "Ten plik nie zawiera atrybutu intensity - punkty sa pokazane na szaro.";
+
+            if (ColorMode != ColorMode.Solid && ColorSettings.IsDegenerate)
+                return "Zakres kolorow jest pusty (min >= max) - wszystkie punkty maja jeden kolor.";
+
+            return null;
+        }
+    }
+```
+
+Żeby zmiana chmury, trybu lub zakresu odświeżała ostrzeżenie, dodaj
+`[NotifyPropertyChangedFor(nameof(ColorWarning))]` do:
+- `PointCloud` (obecnie `[ObservableProperty]` bez atrybutów)
+- `ColorMode`, `ColorRangeMin`, `ColorRangeMax` (w bloku z Step 1)
+
+- [ ] **Step 4: Wywołaj `ApplyAutoRange` po wczytaniu pliku**
 
 W metodzie `LoadAsync`, po linii `PointCloud = cloud;` dodaj:
 
@@ -1507,12 +1616,12 @@ W metodzie `LoadAsync`, po linii `PointCloud = cloud;` dodaj:
             ApplyAutoRange();
 ```
 
-- [ ] **Step 4: Build**
+- [ ] **Step 5: Build**
 
 Run: `dotnet build LidarViewer.slnx -v q --nologo`
 Expected: Build succeeded, 0 errors. Upewnij się, że CommunityToolkit wygenerował `OnColorModeChanged` i `OnAutoColorRangeChanged` (metody `partial void` bez implementacji kompilują się bez błędu).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/LidarViewer.App/ViewModels/MainViewModel.cs
@@ -1715,6 +1824,8 @@ na:
                          IsVisible="{Binding ShowLegend}" />
                 <TextBlock DockPanel.Dock="Right" Text="min / max" VerticalAlignment="Center" Margin="0,0,4,0"
                            IsVisible="{Binding ShowLegend}" />
+                <TextBlock DockPanel.Dock="Right" Text="{Binding ColorWarning}" Foreground="#FFE08A"
+                           VerticalAlignment="Center" Margin="12,0,0,0" />
             </DockPanel>
         </StackPanel>
 ```
@@ -1773,7 +1884,7 @@ Expected: Build succeeded, 0 Warning(s), 0 Error(s).
 - [ ] **Step 2: Pełny zestaw testów**
 
 Run: `dotnet test tests/LidarViewer.Core.Tests/LidarViewer.Core.Tests.csproj`
-Expected: PASS — wszystkie testy zielone (dotychczasowe + 29 nowych).
+Expected: PASS — wszystkie testy zielone (98 testów etapu 1).
 
 - [ ] **Step 3: Sprawdź pokrycie**
 
@@ -1790,7 +1901,7 @@ Uruchom aplikację i sprawdź na `lidar-samples/pdal_autzen_trim.las` (110 000 p
 4. Zmiana mapy na **Viridis** → gradient fiolet→żółty; zmiana na **Turbo** → gradient niebieski→czerwony.
 5. Odznaczenie „Auto zakres" i wpisanie ręcznego min/max → gradient się zmienia, wartości poza zakresem dostają kolor skrajny.
 6. Przełączenie w widok 2D → te same kolory co w 3D.
-7. Wczytanie `lidar-samples/pcl_lamppost.pcd` → pozycje w 3D, brak intensywności w pliku (sprawdź, czy opcja Intensywność jest sensowna; przy braku danych punkty są szare).
+7. Wczytanie `lidar-samples/pcl_lamppost.pcd` → pozycje w 3D, brak intensywności w pliku: wybranie trybu **Intensywnosc** pokazuje ostrzeżenie („Ten plik nie zawiera atrybutu intensity"), a punkty są szare.
 
 - [ ] **Step 5: Wydajność**
 

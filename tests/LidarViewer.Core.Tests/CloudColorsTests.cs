@@ -72,4 +72,66 @@ public class CloudColorsTests
 
         Assert.Empty(rgba);
     }
+
+    [Fact]
+    public void Build_IntensityShorterThanPointCount_DoesNotThrowAndFallsBackToGray()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f, 1f, 1f, 1f, 2f, 2f, 2f], [0]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.Intensity,
+            Map = ColormapKind.Grayscale,
+            Min = 0f,
+            Max = 255f,
+        });
+
+        Assert.Equal(12, rgba.Length);
+        Assert.Equal((byte)0, rgba[0]);
+        Assert.Equal((byte)128, rgba[4]);
+        Assert.Equal((byte)128, rgba[8]);
+    }
+
+    [Fact]
+    public void Build_RampMode_WritesRgbaInOrder()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f], [255]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.Intensity,
+            Map = ColormapKind.Viridis,
+            Min = 0f,
+            Max = 255f,
+        });
+
+        Assert.Equal([(byte)253, (byte)231, (byte)37, (byte)255], rgba);
+    }
+
+    [Fact]
+    public void Build_DegenerateRange_FillsCloudWithSingleColor()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f, 1f, 1f, 1f], [0, 255]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.Intensity,
+            Map = ColormapKind.Grayscale,
+            Min = 5f,
+            Max = 5f,
+        });
+
+        Assert.Equal((byte)0, rgba[0]);
+        Assert.Equal((byte)0, rgba[4]);
+    }
+
+    [Fact]
+    public void Build_FallbackGray_IsOpaque()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings { Mode = ColorMode.Intensity });
+
+        Assert.Equal([(byte)128, (byte)128, (byte)128, (byte)255], rgba);
+    }
 }
