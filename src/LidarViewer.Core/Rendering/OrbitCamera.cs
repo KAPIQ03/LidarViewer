@@ -25,6 +25,16 @@ public sealed class OrbitCamera
         Distance = SceneRadius * 2.5f;
     }
 
+    /// <summary>
+    /// Przywraca domyslny kat patrzenia. Odleglosc zostaje, bo zalezy od
+    /// rozmiaru chmury.
+    /// </summary>
+    public void Reset()
+    {
+        Yaw = MathF.PI / 4;
+        Pitch = MathF.PI / 6;
+    }
+
     public void Rotate(float deltaYaw, float deltaPitch)
     {
         Yaw += deltaYaw;

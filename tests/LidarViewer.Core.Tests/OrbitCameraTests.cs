@@ -136,4 +136,19 @@ public class OrbitCameraTests
 
         Assert.Equal(a * 2f, cam.WorldUnitsPerPixel(500), 5);
     }
+
+    [Fact]
+    public void Reset_RestoresDefaultAngleAndKeepsDistance()
+    {
+        var cam = new OrbitCamera();
+        cam.FitTo(Vector3.Zero, 10f);
+        cam.Rotate(1.2f, 0.4f);
+        cam.Zoom(2f);
+
+        cam.Reset();
+
+        Assert.Equal(MathF.PI / 4, cam.Yaw, 4);
+        Assert.Equal(MathF.PI / 6, cam.Pitch, 4);
+        Assert.Equal(50f, cam.Distance, 3);
+    }
 }

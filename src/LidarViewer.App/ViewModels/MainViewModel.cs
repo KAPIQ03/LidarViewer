@@ -236,6 +236,21 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public bool AutoResetView => !IsLive;
 
+    /// <summary>
+    /// Czy panel filtrow jest widoczny. Panel mozna zamknac, zeby nie
+    /// zaslanial widoku chmury.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsFiltersPanelOpen { get; set; } = true;
+
+    /// <summary>
+    /// Czy okno diagnostyki jest widoczne. Domyslnie zamkniete, bo to
+    /// pomocnicze okno, ktore zaslanialo dolna czesc widoku.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsDiagnosticsOpen { get; set; }
+
+
     [ObservableProperty]
     public partial bool SimulatorEnabled { get; set; }
 

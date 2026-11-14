@@ -74,13 +74,13 @@ public sealed class PointCloudView : Control
             // pierwszej chmurze.
             if (view.AutoResetView || !view._viewResetOnce)
             {
-                view.ResetView();
+                view.ResetZoomPan();
                 view._viewResetOnce = true;
             }
 
             view.InvalidateColors();
         });
-        PlaneProperty.Changed.AddClassHandler<PointCloudView>((view, _) => view.ResetView());
+        PlaneProperty.Changed.AddClassHandler<PointCloudView>((view, _) => view.ResetZoomPan());
         ColorSettingsProperty.Changed.AddClassHandler<PointCloudView>((view, _) => view.InvalidateColors());
     }
 
@@ -90,12 +90,17 @@ public sealed class PointCloudView : Control
         InvalidateVisual();
     }
 
-    private void ResetView()
+    private void ResetZoomPan()
     {
         _zoom = 1f;
         _pan = default;
         InvalidateVisual();
     }
+
+    /// <summary>
+    /// Przywraca domyslny zoom i przesuniecie widoku.
+    /// </summary>
+    public void ResetView() => ResetZoomPan();
 
     public override void Render(DrawingContext context)
     {

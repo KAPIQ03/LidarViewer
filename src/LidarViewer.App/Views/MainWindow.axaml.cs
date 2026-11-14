@@ -126,4 +126,43 @@ public partial class MainWindow : Window
 
         vm.Advance(delta);
     }
+
+    private void OnResetViewClick(object? sender, RoutedEventArgs e) => ResetView();
+
+    private void ResetView()
+    {
+        View3D.ResetView();
+        View2D.ResetView();
+    }
+
+    // Skroty klawiszowe: R - reset widoku, 2 i 3 - widok plaszczyzny,
+    // spacja - odtwarzanie. W polach tekstowych skroty nie dzialaja, bo
+    // klawisze musza trafic do wpisywania.
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        if (_vm is null || e.Source is TextBox or ComboBox or CheckBox or Slider or Button)
+            return;
+
+        switch (e.Key)
+        {
+            case Key.R:
+                ResetView();
+                break;
+            case Key.D2:
+                _vm.ViewMode = ViewMode.Widok2D;
+                break;
+            case Key.D3:
+                _vm.ViewMode = ViewMode.Widok3D;
+                break;
+            case Key.Space:
+                _vm.PlayPauseCommand.Execute(null);
+                break;
+            default:
+                return;
+        }
+
+        e.Handled = true;
+    }
 }

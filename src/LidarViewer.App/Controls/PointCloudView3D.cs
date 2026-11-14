@@ -227,6 +227,20 @@ public sealed class PointCloudView3D : OpenGlControlBase
         RequestNextFrameRendering();
     }
 
+    /// <summary>
+    /// Przywraca domyslna kamere i dopasowuje ja do aktualnej chmury.
+    /// </summary>
+    public void ResetView()
+    {
+        _camera.Reset();
+        _cameraFitted = false;
+
+        if (_cloud is { Count: > 0 } cloud)
+            _camera.FitTo(Vector3.Zero, cloud.Radius);
+
+        RequestNextFrameRendering();
+    }
+
     private unsafe void UploadColors(GL gl)
     {
         _colorsDirty = false;
