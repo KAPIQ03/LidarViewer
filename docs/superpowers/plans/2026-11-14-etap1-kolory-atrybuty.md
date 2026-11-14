@@ -1014,7 +1014,7 @@ public class CloudColorsTests
     [Fact]
     public void Build_RampMode_WritesRgbaInOrder()
     {
-        var cloud = new PointCloud([0f, 0f, 0f], [255]);
+        var cloud = new PointCloud([0f, 0f, 0f, 1f, 1f, 1f], [0, 255]);
 
         var rgba = CloudColors.Build(cloud, new ColorSettings
         {
@@ -1024,7 +1024,8 @@ public class CloudColorsTests
             Max = 255f,
         });
 
-        Assert.Equal([(byte)253, (byte)231, (byte)37, (byte)255], rgba);
+        Assert.Equal([(byte)68, (byte)1, (byte)84, (byte)255], rgba[..4]);
+        Assert.Equal([(byte)253, (byte)231, (byte)37, (byte)255], rgba[4..]);
     }
 
     [Fact]
@@ -1040,18 +1041,25 @@ public class CloudColorsTests
             Max = 5f,
         });
 
-        Assert.Equal((byte)0, rgba[0]);
-        Assert.Equal((byte)0, rgba[4]);
+        Assert.Equal([(byte)0, (byte)0, (byte)0, (byte)255], rgba[..4]);
+        Assert.Equal([(byte)0, (byte)0, (byte)0, (byte)255], rgba[4..]);
     }
 
     [Fact]
     public void Build_FallbackGray_IsOpaque()
     {
-        var cloud = new PointCloud([0f, 0f, 0f]);
+        var cloud = new PointCloud([0f, 0f, 0f, 1f, 1f, 1f], [0]);
 
-        var rgba = CloudColors.Build(cloud, new ColorSettings { Mode = ColorMode.Intensity });
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.Intensity,
+            Map = ColormapKind.Grayscale,
+            Min = 0f,
+            Max = 255f,
+        });
 
-        Assert.Equal([(byte)128, (byte)128, (byte)128, (byte)255], rgba);
+        Assert.Equal([(byte)0, (byte)0, (byte)0, (byte)255], rgba[..4]);
+        Assert.Equal([(byte)128, (byte)128, (byte)128, (byte)255], rgba[4..]);
     }
 }
 ```
