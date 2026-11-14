@@ -139,7 +139,10 @@ public sealed class PointCloudView3D : OpenGlControlBase
         if (!isEs) _gl.Enable(EnableCap.ProgramPointSize);
         _gl.Enable(EnableCap.DepthTest);
 
+        // Po ponownym utworzeniu kontekstu bufor kolorow jest nowy i pusty,
+        // wiec trzeba go wypelnic jeszcze raz.
         _uploadPending = true;
+        _colorsDirty = true;
     }
 
     protected override void OnOpenGlRender(GlInterface glInterface, int fb)
