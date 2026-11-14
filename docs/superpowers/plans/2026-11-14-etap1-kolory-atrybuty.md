@@ -59,6 +59,7 @@ var cloud = new PointCloud([0f, 0f, 0f,  3f, 4f, 0f]) { Origin = (10, 0, 0) };
 | Plik | Odpowiedzialność |
 |---|---|
 | `src/LidarViewer.App/Controls/ColorLegend.cs` | Legenda: tytuł, pasek gradientu, podpisy min/max |
+| `src/LidarViewer.App/Converters/FloatTextConverter.cs` | Konwersja `float` ⇄ tekst dla pól min/max (kultura PL) |
 
 **App — modyfikowane:**
 | Plik | Zmiana |
@@ -1550,7 +1551,7 @@ a w klasie po `public partial string? Diagnostics { get; set; }` dodaj:
     public string LegendTitle => ColorMode switch
     {
         ColorMode.Intensity => "Intensywnosc",
-        ColorMode.Distance => "Range (odleglosc od sensora)",
+        ColorMode.Distance => "Odleglosc od sensora",
         _ => "Jednolity",
     };
 ```
@@ -1571,8 +1572,9 @@ W `MainViewModel.cs` dodaj metody:
         ApplyRangeForMode();
     }
 
-    // Wybor trybu kolorowania zawsze ustawia zakres na dane, inaczej chmura
-    // zostalaby jednokolorowa bez zadnego ostrzezenia.
+    // Wybor trybu kolorowania ustawia zakres na dane, inaczej chmura
+    // zostalaby jednokolorowa bez zadnego ostrzezenia. Zakres wprowadzony
+    // recznie przez uzytkownika pozostaje nietkniety, dopoki nie jest pusty.
     private void ApplyRangeForMode()
     {
         if (PointCloud is null || ColorMode == ColorMode.Solid)
@@ -1586,10 +1588,35 @@ W `MainViewModel.cs` dodaj metody:
         if (attribute is null)
             return;
 
-        ColorRangeMin = attribute.Min;
-        ColorRangeMax = attribute.Max;
+        if (!AutoColorRange && ColorRangeMax > ColorRangeMin)
+            return;
+
+        SetRange(attribute.Min, attribute.Max);
+    }
+
+    // Zakres ustawiamy w kolejnosci, ktora nigdy nie publikuje odwroconego
+    // zakresu (nowe Min przy starym Max) - chmura flashowaby wtedy jednym kolorem.
+    private void SetRange(float min, float max)
+    {
+        if (min > ColorRangeMax)
+        {
+            ColorRangeMax = max;
+            ColorRangeMin = min;
+        }
+        else
+        {
+            ColorRangeMin = min;
+            ColorRangeMax = max;
+        }
     }
 ```
+
+**Uwaga — kolejność publikacji zakresu.** `Min` i `Max` to dwie niezależne
+właściwości obserwowane, a każda zmiana osobno budzi `ColorSettings`. Gdyby `Min`
+został ustawiony przed `Max`, widok przez jedną klatkę zobaczyłby zakres
+odwrócony (`Max < Min`), a `ColorRamp` spłaszczyłby chmurę do jednego koloru.
+Dlatego `SetRange` ustawia `Max` pierwszy, gdy nowe minimum przekracza dotychczasowe
+maksimum — wtedy żaden stan pośredni nie jest odwrócony ani pusty.
 
 oraz `using LidarViewer.Core.Models;` (jest już).
 
@@ -1799,9 +1826,77 @@ git commit -m "feat(app): legenda kolorow z gradientem"
 ### Task 10: Okno — kontrolki kolorów i legenda
 
 **Files:**
+- Create: `src/LidarViewer.App/Converters/FloatTextConverter.cs`
 - Modify: `src/LidarViewer.App/Views/MainWindow.axaml`
 
-- [ ] **Step 1: Podziel toolbar na dwa panele**
+- [ ] **Step 1: Konwerter liczba ⇄ tekst**
+
+Pola min/max są typu `float`. Domyślna konwersja Avalonia używa `CultureInfo.CurrentCulture`,
+więc w polskiej kulturze `12,5` działa, ale `12.5` jest **po cichu odrzucane** (pole
+zostaje bez zmian, bez żadnego komunikatu), a `float` → tekst gubi precyzję
+(`123456.789` → `"123456,79"`) i potrafi wypisać notację wykładniczą (`1E-07`).
+Dlatego ręczny zakres musi mieć własny konwerter.
+
+`src/LidarViewer.App/Converters/FloatTextConverter.cs`:
+```csharp
+using System;
+using System.Globalization;
+using Avalonia.Data;
+using Avalonia.Data.Converters;
+
+namespace LidarViewer.App.Converters;
+
+public sealed class FloatTextConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not float number)
+            return string.Empty;
+
+        return number.ToString("0.######", culture);
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not string text)
+            return BindingOperations.DoNothing;
+
+        text = text.Trim();
+        if (text.Length == 0)
+            return BindingOperations.DoNothing;
+
+        if (float.TryParse(text, NumberStyles.Float, culture, out float result))
+            return result;
+
+        if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out result))
+            return result;
+
+        // Niepoprawna wartosc nie moze trafic do modelu - inaczej pole
+        // po cichu cofnie sie do poprzedniej wartosci.
+        return BindingOperations.DoNothing;
+    }
+}
+```
+
+`NumberStyles.Float` nie dopuszcza separatora tysięcy, więc `12.5` w kulturze PL
+przechodzi próbę z `InvariantCulture` i daje `12.5`, a `12,5` w kulturze EN nie
+przechodzi żadnej próby (przecinek nie jest separatorem dziesiętnym).
+
+- [ ] **Step 2: Zarejestruj konwerter w XAML**
+
+W `MainWindow.axaml` dodaj przestrzeń nazw (przy pozostałych `xmlns`):
+```xml
+        xmlns:conv="using:LidarViewer.App.Converters"
+```
+
+i zasób konwertera bezpośrednio pod `<Window ...>`:
+```xml
+    <Window.Resources>
+        <conv:FloatTextConverter x:Key="FloatText" />
+    </Window.Resources>
+```
+
+- [ ] **Step 3: Podziel toolbar na dwa panele**
 
 W `MainWindow.axaml` zamień blok:
 ```xml
@@ -1832,9 +1927,9 @@ na:
                 <CheckBox DockPanel.Dock="Right" Content="Auto zakres" IsChecked="{Binding AutoColorRange}"
                           VerticalAlignment="Center" Margin="12,0,0,0" IsVisible="{Binding ShowLegend}" />
                 <TextBox DockPanel.Dock="Right" Text="{Binding ColorRangeMin}" Width="80" Margin="8,0,0,0"
-                         IsVisible="{Binding ShowLegend}" />
+                         Converter="{StaticResource FloatText}" IsVisible="{Binding ShowLegend}" />
                 <TextBox DockPanel.Dock="Right" Text="{Binding ColorRangeMax}" Width="80" Margin="4,0,12,0"
-                         IsVisible="{Binding ShowLegend}" />
+                         Converter="{StaticResource FloatText}" IsVisible="{Binding ShowLegend}" />
                 <TextBlock DockPanel.Dock="Right" Text="min / max" VerticalAlignment="Center" Margin="0,0,4,0"
                            IsVisible="{Binding ShowLegend}" />
                 <TextBlock DockPanel.Dock="Right" Text="{Binding ColorWarning}" Foreground="#FFE08A"
@@ -1843,7 +1938,7 @@ na:
         </StackPanel>
 ```
 
-- [ ] **Step 2: Podepnij kolory do widoków i dodaj legendę**
+- [ ] **Step 4: Podepnij kolory do widoków i dodaj legendę**
 
 W `MainWindow.axaml` zamień blok:
 ```xml
@@ -1868,7 +1963,7 @@ na:
         </Grid>
 ```
 
-- [ ] **Step 3: Build i uruchom**
+- [ ] **Step 5: Build i uruchom**
 
 Run: `dotnet build LidarViewer.slnx -v q --nologo`
 Expected: Build succeeded, 0 errors.
@@ -1876,10 +1971,10 @@ Expected: Build succeeded, 0 errors.
 Run: `dotnet run --project src/LidarViewer.App/LidarViewer.App.csproj`
 Expected: okno otwiera się bez wyjątków, konsola nie zgłasza błędów Avalonia.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/LidarViewer.App/Views/MainWindow.axaml
+git add src/LidarViewer.App/Converters/FloatTextConverter.cs src/LidarViewer.App/Views/MainWindow.axaml
 git commit -m "feat(app): kontrolki kolorowania i legenda w oknie"
 ```
 
@@ -1948,6 +2043,7 @@ src/LidarViewer.Core/Rendering/CloudColors.cs           NOWY
 src/LidarViewer.App/Controls/PointCloudView3D.cs        ZMIENIONY
 src/LidarViewer.App/Controls/PointCloudView.cs          ZMIENIONY
 src/LidarViewer.App/Controls/ColorLegend.cs             NOWY
+src/LidarViewer.App/Converters/FloatTextConverter.cs    NOWY
 src/LidarViewer.App/ViewModels/MainViewModel.cs         ZMIENIONY
 src/LidarViewer.App/Views/MainWindow.axaml              ZMIENIONY
 tests/LidarViewer.Core.Tests/PointAttributeTests.cs     NOWY
