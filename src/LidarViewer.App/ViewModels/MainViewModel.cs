@@ -4,10 +4,12 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LidarViewer.App.Streaming;
 using LidarViewer.Core.Models;
 using LidarViewer.Core.Playback;
 using LidarViewer.Core.Readers;
 using LidarViewer.Core.Rendering;
+using LidarViewer.Core.Streaming;
 
 namespace LidarViewer.App.ViewModels;
 
@@ -185,11 +187,66 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial string Status { get; set; } = "Podaj ścieżkę do pliku .vtp.";
 
+    /// <summary>
+    /// Pojemnosc bufora punktow w trybie live. Wieksza wartosc daje
+    /// dluzsza historie, ale wolniejsze przeladowanie widoku.
+    /// </summary>
+    public const int LiveBufferCapacity = 200_000;
+
+    private UdpCloudReceiver? _receiver;
+    private LiveSimulator? _simulator;
+    private bool _isLive;
+
+    [ObservableProperty]
+    public partial int LivePort { get; set; } = 2368;
+
+    [ObservableProperty]
+    public partial LiveProtocol LiveProtocol { get; set; } = LiveProtocol.Wlasny;
+
+    public LiveProtocol[] LiveProtocols { get; } = Enum.GetValues<LiveProtocol>();
+
+    /// <summary>
+    /// Czy odbior UDP pracuje.
+    /// </summary>
+    public bool IsLive
+    {
+        get => _isLive;
+        private set
+        {
+            if (_isLive == value)
+                return;
+
+            _isLive = value;
+            OnPropertyChanged(nameof(IsLive));
+        }
+    }
+
+    [ObservableProperty]
+    public partial bool SimulatorEnabled { get; set; }
+
+    public int LivePointCount => _receiver?.Buffer.Count ?? 0;
+
+    public long LivePacketCount => _receiver?.PacketCount ?? 0;
+
+    public long LiveRejectedCount => _receiver?.RejectedCount ?? 0;
+
+    public IRelayCommand StartLiveCommand { get; }
+
+    public IRelayCommand StopLiveCommand { get; }
+
+    /// <summary>
+    /// Nowa chmura z odbiornika. Wywolywane z watku odbioru - widok
+    /// przenosi je na watek interfejsu.
+    /// </summary>
+    public event Action<PointCloud>? LiveCloudUpdated;
+
     public MainViewModel()
     {
         Pipeline.PropertyChanged += OnPipelinePropertyChanged;
         PlayPauseCommand = new RelayCommand(PlayPauseCore);
         LoadSequenceCommand = new RelayCommand<string>(LoadSequenceCore);
+        StartLiveCommand = new RelayCommand(StartLiveCore);
+        StopLiveCommand = new RelayCommand(StopLiveCore);
         Speed = Speeds[2];
     }
 
@@ -447,5 +504,106 @@ public partial class MainViewModel : ViewModelBase
         }
 
         _rangeComputed = true;
+    }
+
+    private void StartLiveCore()
+    {
+        if (_receiver is not null)
+            return;
+
+        try
+        {
+            IPacketDecoder decoder = LiveProtocol switch
+            {
+                LiveProtocol.VelodyneVlp16 => new VelodyneVlp16Decoder(),
+                _ => new SimpleCloudDecoder(),
+            };
+
+            var receiver = new UdpCloudReceiver(LivePort, decoder, LiveBufferCapacity);
+            receiver.CloudUpdated += OnLiveCloud;
+            receiver.Start();
+
+            _receiver = receiver;
+            IsLive = true;
+            Status = $"Nasłuch UDP na porcie {receiver.Port} ({decoder.Name}).";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Błąd: {ex.Message}";
+        }
+    }
+
+    private void StopLiveCore()
+    {
+        if (_receiver is null)
+            return;
+
+        _receiver.CloudUpdated -= OnLiveCloud;
+        _receiver.Dispose();
+        _receiver = null;
+        IsLive = false;
+
+        // Po zatrzymaniu odbioru wracamy do chmury z pliku - widok nie
+        // powinien zostac z ostatnia stanu na zywo.
+        PointCloud = Pipeline.Output;
+        Status = "Zatrzymano odbiór na żywo.";
+    }
+
+    private void OnLiveCloud(PointCloud cloud) => LiveCloudUpdated?.Invoke(cloud);
+
+    /// <summary>
+    /// Wstawia chmure otrzymana z odbiornika do widoku. Wolane z watku
+    /// interfejsu.
+    /// </summary>
+    public void ApplyLiveCloud(PointCloud cloud)
+    {
+        ArgumentNullException.ThrowIfNull(cloud);
+
+        PointCloud = cloud;
+        OnPropertyChanged(nameof(LivePointCount));
+        OnPropertyChanged(nameof(LivePacketCount));
+    }
+
+    partial void OnSimulatorEnabledChanged(bool value)
+    {
+        if (value)
+        {
+            // Symulator mowi wlasnym protokolem - inny dekoder odrzucilby
+            // wszystkie pakiety.
+            LiveProtocol = LiveProtocol.Wlasny;
+
+            if (_receiver is null)
+                StartLiveCore();
+
+            if (_receiver is null)
+            {
+                SimulatorEnabled = false;
+                return;
+            }
+
+            _simulator?.Dispose();
+            _simulator = new LiveSimulator("127.0.0.1", _receiver.Port);
+            _simulator.Start();
+            Status = "Symulator włączony - pakiety lecą na 127.0.0.1.";
+        }
+        else
+        {
+            _simulator?.Dispose();
+            _simulator = null;
+        }
+    }
+
+    partial void OnLiveProtocolChanged(LiveProtocol value)
+    {
+        // Zmiana formatu pakietow wymaga nowego dekodera, wiec odbior
+        // musi wystartowac od nowa.
+        if (_receiver is null)
+            return;
+
+        _receiver.CloudUpdated -= OnLiveCloud;
+        _receiver.Dispose();
+        _receiver = null;
+
+        StartLiveCore();
     }
 }
