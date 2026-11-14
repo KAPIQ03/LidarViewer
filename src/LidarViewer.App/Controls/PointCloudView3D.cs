@@ -37,30 +37,43 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(DiagnosticsProperty, value);
     }
 
+    public static readonly StyledProperty<ColorSettings?> ColorSettingsProperty =
+        AvaloniaProperty.Register<PointCloudView3D, ColorSettings?>(nameof(ColorSettings));
+
+    public ColorSettings? ColorSettings
+    {
+        get => GetValue(ColorSettingsProperty);
+        set => SetValue(ColorSettingsProperty, value);
+    }
+
     private const string VertexShader = """
         in vec3 aPos;
+        in vec4 aColor;
         uniform mat4 uMvp;
         uniform float uPointSize;
+        out vec4 vColor;
         void main()
         {
             gl_Position = uMvp * vec4(aPos, 1.0);
             gl_PointSize = uPointSize;
+            vColor = aColor;
         }
         """;
 
     private const string FragmentShader = """
-        uniform vec4 uColor;
+        in vec4 vColor;
         out vec4 FragColor;
         void main()
         {
-            FragColor = uColor;
+            FragColor = vColor;
         }
         """;
 
     private GL? _gl;
     private bool _initOk;
-    private uint _program, _vao, _vbo;
-    private int _mvpLocation, _pointSizeLocation, _colorLocation;
+    private uint _program, _vao, _vbo, _colVbo;
+    private int _mvpLocation, _pointSizeLocation;
+    private bool _colorsDirty = true;
 
     private PointCloud? _cloud;
     private bool _uploadPending;
@@ -80,8 +93,11 @@ public sealed class PointCloudView3D : OpenGlControlBase
         {
             view._cloud = e.NewValue as PointCloud;
             view._uploadPending = true;
+            view.InvalidateColors();
             view.RequestNextFrameRendering();
         });
+
+        ColorSettingsProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.InvalidateColors());
     }
 
     protected override void OnOpenGlInit(GlInterface gl)
@@ -107,7 +123,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _program = BuildProgram(_gl, ShaderHeader(isEs));
         _mvpLocation = _gl.GetUniformLocation(_program, "uMvp");
         _pointSizeLocation = _gl.GetUniformLocation(_program, "uPointSize");
-        _colorLocation = _gl.GetUniformLocation(_program, "uColor");
 
         _vao = _gl.GenVertexArray();
         _vbo = _gl.GenBuffer();
@@ -115,6 +130,11 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
         unsafe { _gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), null); }
         _gl.EnableVertexAttribArray(0);
+
+        _colVbo = _gl.GenBuffer();
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _colVbo);
+        unsafe { _gl.VertexAttribPointer(1, 4, VertexAttribPointerType.UnsignedByte, true, 4, null); }
+        _gl.EnableVertexAttribArray(1);
 
         if (!isEs) _gl.Enable(EnableCap.ProgramPointSize);
         _gl.Enable(EnableCap.DepthTest);
@@ -140,6 +160,9 @@ public sealed class PointCloudView3D : OpenGlControlBase
         if (_uploadPending)
             UploadPoints(gl);
 
+        if (_colorsDirty)
+            UploadColors(gl);
+
         double scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
         int width = Math.Max(1, (int)(Bounds.Width * scale));
         int height = Math.Max(1, (int)(Bounds.Height * scale));
@@ -156,7 +179,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
             gl.UseProgram(_program);
             gl.UniformMatrix4(_mvpLocation, 1, false, (float*)&mvp);
             gl.Uniform1(_pointSizeLocation, (float)(2.0 * scale));
-            gl.Uniform4(_colorLocation, 0.2f, 0.9f, 0.3f, 1f);
             gl.BindVertexArray(_vao);
             gl.DrawArrays(PrimitiveType.Points, 0, (uint)_pointCount);
         }
@@ -174,10 +196,32 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _initOk = false;
         if (_gl is null) return;
         _gl.DeleteBuffer(_vbo);
+        _gl.DeleteBuffer(_colVbo);
         _gl.DeleteVertexArray(_vao);
         _gl.DeleteProgram(_program);
         _gl.Dispose();
         _gl = null;
+    }
+
+    private void InvalidateColors()
+    {
+        _colorsDirty = true;
+        RequestNextFrameRendering();
+    }
+
+    private unsafe void UploadColors(GL gl)
+    {
+        _colorsDirty = false;
+
+        var cloud = _cloud;
+        if (cloud is null || cloud.Count == 0)
+            return;
+
+        byte[] rgba = CloudColors.Build(cloud, ColorSettings ?? ColorSettings.Default);
+
+        gl.BindBuffer(BufferTargetARB.ArrayBuffer, _colVbo);
+        fixed (byte* data = rgba)
+            gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)rgba.Length, data, BufferUsageARB.DynamicDraw);
     }
 
     private unsafe void UploadPoints(GL gl)
@@ -300,6 +344,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
         gl.AttachShader(program, vs);
         gl.AttachShader(program, fs);
         gl.BindAttribLocation(program, 0, "aPos");
+        gl.BindAttribLocation(program, 1, "aColor");
         gl.LinkProgram(program);
         gl.GetProgram(program, ProgramPropertyARB.LinkStatus, out int ok);
         if (ok == 0)
