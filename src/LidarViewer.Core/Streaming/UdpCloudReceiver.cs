@@ -31,6 +31,10 @@ public sealed class UdpCloudReceiver : IDisposable
         _decoder = decoder;
         Buffer = new LiveCloudBuffer(capacity);
         _client = new UdpClient(new IPEndPoint(IPAddress.Any, port));
+
+        // Domyslny bufor odbioru jest za maly na wieksze datagramy - pakiet
+        // zostalby urwany albo odrzucony.
+        _client.Client.ReceiveBufferSize = 1 << 20;
         Port = ((IPEndPoint)_client.Client.LocalEndPoint!).Port;
     }
 
