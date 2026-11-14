@@ -1,6 +1,6 @@
 # Roadmap: mniejszy klon VeloView/LidarView 5.2
 
-Zatwierdzany etapami — 2026-11-14. Każdy etap to osobny commit na branchu `feat/veloview-clone`.
+Zatwierdzany etapami — 2026-11-14. Każdy etap to osobny commit na branchu `feat/lidar-toolkit`.
 
 ## Cel
 
@@ -187,7 +187,7 @@ ten sam plik otwiera się w LidarView 5.2 i pokazuje ruch sensoru.
 ## Podział na commity
 
 ```
-feat/veloview-clone
+feat/lidar-toolkit
  ├─ docs: plan 6 etapów                          (ten dokument)
  ├─ feat(core): atrybuty punktów i odległość     etap 1
  ├─ feat(app): kolorowanie intensity/distance     etap 1

@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Instrukcje dla Claude Code (lokalne)
 CLAUDE.md
+
+# Przykladowe dane lidarowe do testow (41 MB)
+lidar-samples/
