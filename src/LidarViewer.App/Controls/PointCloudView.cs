@@ -7,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using LidarViewer.Core.Models;
+using LidarViewer.Core.Rendering;
 
 namespace LidarViewer.App.Controls;
 
@@ -30,19 +31,41 @@ public sealed class PointCloudView : Control
         set => SetValue(PlaneProperty, value);
     }
 
+    public static readonly StyledProperty<ColorSettings?> ColorSettingsProperty =
+        AvaloniaProperty.Register<PointCloudView, ColorSettings?>(nameof(ColorSettings));
+
+    public ColorSettings? ColorSettings
+    {
+        get => GetValue(ColorSettingsProperty);
+        set => SetValue(ColorSettingsProperty, value);
+    }
+
     private const int Background = unchecked((int)0xFF1A1A1A);
-    private const int PointColor = unchecked((int)0xFF33E64D);
+    private const int FallbackColor = unchecked((int)0xFF808080);
 
     private float _zoom = 1f;
     private Vector _pan;
     private Point? _lastPointer;
     private int[] _pixels = [];
     private WriteableBitmap? _bitmap;
+    private byte[] _colorBuffer = [];
+    private bool _colorsDirty = true;
 
     static PointCloudView()
     {
-        PointCloudProperty.Changed.AddClassHandler<PointCloudView>((view, _) => view.ResetView());
+        PointCloudProperty.Changed.AddClassHandler<PointCloudView>((view, _) =>
+        {
+            view.ResetView();
+            view.InvalidateColors();
+        });
         PlaneProperty.Changed.AddClassHandler<PointCloudView>((view, _) => view.ResetView());
+        ColorSettingsProperty.Changed.AddClassHandler<PointCloudView>((view, _) => view.InvalidateColors());
+    }
+
+    private void InvalidateColors()
+    {
+        _colorsDirty = true;
+        InvalidateVisual();
     }
 
     private void ResetView()
@@ -85,6 +108,12 @@ public sealed class PointCloudView : Control
         Array.Fill(_pixels, Background);
         if (PointCloud is not { Count: > 0 } cloud) return;
 
+        if (_colorsDirty)
+        {
+            _colorBuffer = CloudColors.Build(cloud, ColorSettings ?? ColorSettings.Default);
+            _colorsDirty = false;
+        }
+
         var (ha, va) = Plane switch
         {
             ProjectionPlane.XZ => (0, 2),
@@ -101,10 +130,13 @@ public sealed class PointCloudView : Control
         float offsetY = height / 2f + (float)_pan.Y;
 
         var p = cloud.Positions;
+        bool colorsMatch = _colorBuffer.Length == cloud.Count * 4;
         for (int i = 0; i < p.Length; i += 3)
         {
+            int pointIndex = i / 3;
             int x = (int)((p[i + ha] - centerX) * scale + offsetX);
             int y = (int)(offsetY - (p[i + va] - centerY) * scale);
+            int color = colorsMatch ? ToBgra(pointIndex) : FallbackColor;
             for (int dy = 0; dy < 2; dy++)
             {
                 int yy = y + dy;
@@ -113,10 +145,19 @@ public sealed class PointCloudView : Control
                 {
                     int xx = x + dx;
                     if ((uint)xx < (uint)width)
-                        _pixels[yy * width + xx] = PointColor;
+                        _pixels[yy * width + xx] = color;
                 }
             }
         }
+    }
+
+    private int ToBgra(int pointIndex)
+    {
+        int o = pointIndex * 4;
+        return unchecked((int)0xFF000000)
+               | (_colorBuffer[o + 2] << 16)
+               | (_colorBuffer[o + 1] << 8)
+               | _colorBuffer[o];
     }
 
     private static float Axis(System.Numerics.Vector3 v, int index) => index switch { 0 => v.X, 1 => v.Y, _ => v.Z };
