@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using LidarViewer.App.ViewModels;
+using LidarViewer.Core.Models;
 using LidarViewer.Core.Readers;
 
 namespace LidarViewer.App.Views;
@@ -15,12 +16,14 @@ public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(33) };
     private DateTime _lastTick = DateTime.UtcNow;
+    private MainViewModel? _vm;
 
     public MainWindow()
     {
         InitializeComponent();
         _timer.Tick += OnTick;
         DataContextChanged += OnDataContextChanged;
+        Closed += OnClosed;
     }
 
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
@@ -76,14 +79,40 @@ public partial class MainWindow : Window
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        if (DataContext is MainViewModel vm)
-            vm.PropertyChanged += OnViewModelPropertyChanged;
+        if (_vm is not null)
+        {
+            _vm.PropertyChanged -= OnViewModelPropertyChanged;
+            _vm.LiveCloudUpdated -= OnLiveCloudUpdated;
+        }
+
+        if (DataContext is not MainViewModel vm)
+        {
+            _vm = null;
+            return;
+        }
+
+        _vm = vm;
+        vm.PropertyChanged += OnViewModelPropertyChanged;
+        vm.LiveCloudUpdated += OnLiveCloudUpdated;
     }
+
+    // Chmura przychodzi z watku odbioru UDP, wiec trzeba ja przeniesc na
+    // watek interfejsu - wlasniki widoku nie wolno zmieniac z innego watku.
+    private void OnLiveCloudUpdated(PointCloud cloud) =>
+        Dispatcher.UIThread.Post(() => _vm?.ApplyLiveCloud(cloud));
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.IsPlaying))
             _timer.IsEnabled = (DataContext as MainViewModel)?.IsPlaying ?? false;
+    }
+
+    // Zamkniecie okna nie moze zostawic odbiornika UDP na zywo.
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _timer.Stop();
+        _vm?.SimulatorEnabled = false;
+        _vm?.StopLiveCommand.Execute(null);
     }
 
     private void OnTick(object? sender, EventArgs e)

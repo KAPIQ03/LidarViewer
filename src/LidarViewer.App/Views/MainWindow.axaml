@@ -15,6 +15,7 @@
         <conv:FloatTextConverter x:Key="FloatText" />
         <conv:NumberTextConverter x:Key="NumberText" />
         <conv:FilterKindToBoolConverter x:Key="KindToBool" />
+        <conv:LiveProtocolToTextConverter x:Key="ProtocolToText" />
     </Window.Resources>
 
     <Design.DataContext>
@@ -51,6 +52,25 @@
                     <TextBlock Text="{Binding ColorWarning}" Foreground="#FFE08A" VerticalAlignment="Center"
                                Margin="12,0,0,0" />
                 </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Live UDP:" VerticalAlignment="Center" />
+                    <TextBox Text="{Binding LivePort}" Width="80" VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding LiveProtocols}" SelectedItem="{Binding LiveProtocol}"
+                              Width="150" VerticalAlignment="Center">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:LiveProtocol">
+                                <TextBlock Text="{Binding Converter={StaticResource ProtocolToText}}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Content="Start" Command="{Binding StartLiveCommand}" VerticalAlignment="Center"
+                            IsEnabled="{Binding !IsLive}" />
+                    <Button Content="Stop" Command="{Binding StopLiveCommand}" VerticalAlignment="Center"
+                            IsVisible="{Binding IsLive}" />
+                    <CheckBox Content="Symulator" IsChecked="{Binding SimulatorEnabled}" VerticalAlignment="Center"
+                              Margin="12,0,0,0" />
+                    <TextBlock Text="{Binding LiveInfo}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                </StackPanel>
             </StackPanel>
             <Border DockPanel.Dock="Bottom" Padding="8,6" Background="#14FFFFFF"
                     IsVisible="{Binding HasSequence}">
@@ -76,9 +96,10 @@
             <Grid>
                 <c:PointCloudView3D IsVisible="{Binding Is3D}" PointCloud="{Binding PointCloud}"
                                     ColorSettings="{Binding ColorSettings}"
+                                    AutoFitCamera="{Binding AutoFitCamera}"
                                     Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
                 <c:PointCloudView IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}" Plane="{Binding Plane}"
-                                  ColorSettings="{Binding ColorSettings}" />
+                                  ColorSettings="{Binding ColorSettings}" AutoResetView="{Binding AutoResetView}" />
                 <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Padding="8"
                         Background="#D91A1A1A" CornerRadius="4" IsVisible="{Binding ShowLegend}">
                     <c:ColorLegend ColorSettings="{Binding ColorSettings}" Title="{Binding LegendTitle}" />

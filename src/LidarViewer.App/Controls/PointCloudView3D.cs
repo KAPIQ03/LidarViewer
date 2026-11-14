@@ -46,6 +46,20 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(ColorSettingsProperty, value);
     }
 
+    /// <summary>
+    /// Czy kamera ma dopasowac sie do chmury przy kazdej zmianie. W trybie
+    /// live wyłączone, bo kolejne klatki cofałyby obrót ustawiony przez
+    /// uzytkownika.
+    /// </summary>
+    public static readonly StyledProperty<bool> AutoFitCameraProperty =
+        AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(AutoFitCamera), true);
+
+    public bool AutoFitCamera
+    {
+        get => GetValue(AutoFitCameraProperty);
+        set => SetValue(AutoFitCameraProperty, value);
+    }
+
     private const string VertexShader = """
         in vec3 aPos;
         in vec4 aColor;
@@ -74,6 +88,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
     private uint _program, _vao, _vbo, _colVbo;
     private int _mvpLocation, _pointSizeLocation;
     private bool _colorsDirty = true;
+    private bool _cameraFitted;
 
     private PointCloud? _cloud;
     private bool _uploadPending;
@@ -248,7 +263,14 @@ public sealed class PointCloudView3D : OpenGlControlBase
             gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(relative.Length * sizeof(float)), data, BufferUsageARB.StaticDraw);
         ReportGlError(gl, "po BufferData");
 
-        _camera.FitTo(Vector3.Zero, cloud.Radius);
+        // W trybie live kamera dopasowuje sie tylko do pierwszej chmury.
+        // Kolejne klatki nie cofaja obrotu ustawionego przez uzytkownika.
+        if (AutoFitCamera || !_cameraFitted)
+        {
+            _camera.FitTo(Vector3.Zero, cloud.Radius);
+            _cameraFitted = true;
+        }
+
         Report($"Wgrano {_pointCount:N0} punktów, promień chmury {cloud.Radius:F1}.");
     }
 

@@ -40,6 +40,20 @@ public sealed class PointCloudView : Control
         set => SetValue(ColorSettingsProperty, value);
     }
 
+    /// <summary>
+    /// Czy widok ma zresetowac zoom i przesuniecie przy kazdej zmianie
+    /// chmury. W trybie live wylaczone, zeby kolejne klatki nie cofaly
+    /// ustawienia uzytkownika.
+    /// </summary>
+    public static readonly StyledProperty<bool> AutoResetViewProperty =
+        AvaloniaProperty.Register<PointCloudView, bool>(nameof(AutoResetView), true);
+
+    public bool AutoResetView
+    {
+        get => GetValue(AutoResetViewProperty);
+        set => SetValue(AutoResetViewProperty, value);
+    }
+
     private const int Background = unchecked((int)0xFF1A1A1A);
     private const int FallbackColor = unchecked((int)0xFF808080);
 
@@ -50,12 +64,20 @@ public sealed class PointCloudView : Control
     private WriteableBitmap? _bitmap;
     private byte[] _colorBuffer = [];
     private bool _colorsDirty = true;
+    private bool _viewResetOnce;
 
     static PointCloudView()
     {
         PointCloudProperty.Changed.AddClassHandler<PointCloudView>((view, _) =>
         {
-            view.ResetView();
+            // W trybie live widok zostaje na miejscu - reset tylko przy
+            // pierwszej chmurze.
+            if (view.AutoResetView || !view._viewResetOnce)
+            {
+                view.ResetView();
+                view._viewResetOnce = true;
+            }
+
             view.InvalidateColors();
         });
         PlaneProperty.Changed.AddClassHandler<PointCloudView>((view, _) => view.ResetView());

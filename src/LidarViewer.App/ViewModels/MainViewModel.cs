@@ -218,8 +218,23 @@ public partial class MainViewModel : ViewModelBase
 
             _isLive = value;
             OnPropertyChanged(nameof(IsLive));
+            OnPropertyChanged(nameof(AutoFitCamera));
+            OnPropertyChanged(nameof(AutoResetView));
+            OnPropertyChanged(nameof(LiveInfo));
         }
     }
+
+    /// <summary>
+    /// Czy widok ma sam dopasowac kamere do chmury. W trybie live kamera
+    /// zostaje na miejscu, zeby uzytkownik mogl obracac chmure recznie.
+    /// </summary>
+    public bool AutoFitCamera => !IsLive;
+
+    /// <summary>
+    /// Czy widok 2D ma sam resetowac zoom i przesuniecie. W trybie live
+    /// widok zostaje na miejscu.
+    /// </summary>
+    public bool AutoResetView => !IsLive;
 
     [ObservableProperty]
     public partial bool SimulatorEnabled { get; set; }
@@ -229,6 +244,13 @@ public partial class MainViewModel : ViewModelBase
     public long LivePacketCount => _receiver?.PacketCount ?? 0;
 
     public long LiveRejectedCount => _receiver?.RejectedCount ?? 0;
+
+    /// <summary>
+    /// Podsumowanie strumienia pokazane przy pasku live.
+    /// </summary>
+    public string LiveInfo => _receiver is null
+        ? string.Empty
+        : $"Punkty: {LivePointCount:N0} | Pakiety: {LivePacketCount:N0} | Odrzucone: {LiveRejectedCount:N0}";
 
     public IRelayCommand StartLiveCommand { get; }
 
@@ -562,6 +584,7 @@ public partial class MainViewModel : ViewModelBase
         PointCloud = cloud;
         OnPropertyChanged(nameof(LivePointCount));
         OnPropertyChanged(nameof(LivePacketCount));
+        OnPropertyChanged(nameof(LiveInfo));
     }
 
     partial void OnSimulatorEnabledChanged(bool value)

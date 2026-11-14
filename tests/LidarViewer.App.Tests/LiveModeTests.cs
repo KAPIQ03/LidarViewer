@@ -75,6 +75,40 @@ public class LiveModeTests
         vm.StopLiveCommand.Execute(null);
 
         Assert.True(finished == completion.Task, "Symulator nie dostarczyl chmury.");
-        Assert.True(completion.Task.Result.Count > 0);
+        Assert.True((await completion.Task).Count > 0);
+    }
+
+    [Fact]
+    public void CameraStaysInPlaceWhileLive()
+    {
+        var vm = new MainViewModel { LivePort = 34571 };
+
+        Assert.True(vm.AutoFitCamera);
+        Assert.True(vm.AutoResetView);
+
+        vm.StartLiveCommand.Execute(null);
+
+        Assert.False(vm.AutoFitCamera);
+        Assert.False(vm.AutoResetView);
+
+        vm.StopLiveCommand.Execute(null);
+
+        Assert.True(vm.AutoFitCamera);
+        Assert.True(vm.AutoResetView);
+    }
+
+    [Fact]
+    public void LiveInfoShowsPacketCounters()
+    {
+        var vm = new MainViewModel { LivePort = 34572 };
+
+        Assert.Equal(string.Empty, vm.LiveInfo);
+
+        vm.StartLiveCommand.Execute(null);
+
+        Assert.Contains("Punkty:", vm.LiveInfo);
+        Assert.Contains("Pakiety:", vm.LiveInfo);
+
+        vm.StopLiveCommand.Execute(null);
     }
 }
