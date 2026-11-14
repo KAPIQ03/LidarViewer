@@ -144,9 +144,10 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnPointCloudChanged(PointCloud? value)
     {
-        // Nowy plik ma inne wartosci danych, wiec zakres wyliczony dla
-        // poprzedniego pliku przestaje obowiazywac.
-        _rangeUserSet = false;
+        // Nowy plik ma inne wartosci danych, wiec zakres policzony dla
+        // poprzedniego pliku przestaje obowiazywac. Zakres wpisany recznie
+        // przez uzytkownika zostaje - to swiadome ustawienie, a nie
+        // wyliczenie z danych.
         _rangeSeeded = false;
         ApplyRangeForMode();
     }
@@ -200,7 +201,11 @@ public partial class MainViewModel : ViewModelBase
         if (attribute is null)
             return;
 
-        if (!AutoColorRange && _rangeUserSet && ColorRangeMax > ColorRangeMin)
+        // Zakres wpisany recznie przez uzytkownika jest jego decyzja i nie
+        // moze zostac podmieniony - nawet wtedy, gdy jest pusty (min == max)
+        // albo odwrocony. Uzytkownik dostanie wtedy ostrzezenie zamiast
+        // cichego podmienienia na zakres z danych.
+        if (!AutoColorRange && _rangeUserSet)
             return;
 
         SetRange(attribute.Min, attribute.Max);

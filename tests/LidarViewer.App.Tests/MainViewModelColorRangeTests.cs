@@ -102,7 +102,47 @@ public class MainViewModelColorRangeTests
     }
 
     [Fact]
-    public void NewCloud_ResetsManualRangeToNewData()
+    public void DegenerateManualRange_SurvivesModeSwitch()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.ColorRangeMin = 50f;
+        vm.ColorRangeMax = 50f;
+
+        vm.ColorMode = ColorMode.Intensity;
+
+        Assert.Equal(50f, vm.ColorRangeMin);
+        Assert.Equal(50f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void InvertedManualRange_SurvivesModeSwitch()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.ColorRangeMin = 300f;
+        vm.ColorRangeMax = 200f;
+
+        vm.ColorMode = ColorMode.Intensity;
+
+        Assert.Equal(300f, vm.ColorRangeMin);
+        Assert.Equal(200f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void NewCloud_ReseedsAutomaticRange()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+
+        vm.PointCloud = Cloud(100f, 400f);
+
+        Assert.Equal(100f, vm.ColorRangeMin);
+        Assert.Equal(400f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void NewCloud_KeepsManualRange()
     {
         var vm = ViewModelWithCloud(Cloud(10f, 250f));
         vm.ColorMode = ColorMode.Distance;
@@ -112,8 +152,8 @@ public class MainViewModelColorRangeTests
 
         vm.PointCloud = Cloud(100f, 400f);
 
-        Assert.Equal(100f, vm.ColorRangeMin);
-        Assert.Equal(400f, vm.ColorRangeMax);
+        Assert.Equal(3f, vm.ColorRangeMin);
+        Assert.Equal(7f, vm.ColorRangeMax);
     }
 
     [Fact]
