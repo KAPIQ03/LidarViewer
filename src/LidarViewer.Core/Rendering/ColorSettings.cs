@@ -1,0 +1,16 @@
+namespace LidarViewer.Core.Rendering;
+
+public sealed record ColorSettings
+{
+    public static readonly ColorSettings Default = new();
+
+    public ColorMode Mode { get; init; } = ColorMode.Solid;
+
+    public ColormapKind Map { get; init; } = ColormapKind.Viridis;
+
+    public float Min { get; init; }
+
+    public float Max { get; init; } = 1f;
+
+    public Rgba Solid { get; init; } = new(0x33, 0xE6, 0x4D, 0xFF);
+}
