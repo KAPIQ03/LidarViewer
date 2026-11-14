@@ -158,6 +158,20 @@ public class PipelineViewModelTests
     }
 
     [Fact]
+    public void ResetClearsStagesAndKeepsSource()
+    {
+        var cloud = NearbyPoints();
+        var vm = new PipelineViewModel { Source = cloud };
+        vm.AddStage.Execute("voxel-grid");
+
+        vm.Reset();
+
+        Assert.Empty(vm.Stages);
+        Assert.Null(vm.SelectedStage);
+        Assert.Same(cloud, vm.Output);
+    }
+
+    [Fact]
     public void StageOrderAffectsResult()
     {
         // Filtr statystyczny liczy srednia odleglosc wzgledem aktualnej

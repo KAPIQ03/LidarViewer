@@ -87,6 +87,20 @@ public sealed partial class PipelineViewModel : ViewModelBase
         Output = result.Cloud;
     }
 
+    /// <summary>
+    /// Czysci liste etapow. Uzywane przy wczytaniu nowego pliku - filtry
+    /// dostrojone dla jednej chmury nie maja sensu dla innej.
+    /// </summary>
+    public void Reset()
+    {
+        foreach (PipelineStageViewModel stage in Stages)
+            stage.Changed -= OnStageChanged;
+
+        Stages.Clear();
+        SelectedStage = null;
+        Run();
+    }
+
     private void AddStageCore(string? id)
     {
         if (id is null)

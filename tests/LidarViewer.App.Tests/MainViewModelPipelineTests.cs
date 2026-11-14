@@ -59,6 +59,20 @@ public class MainViewModelPipelineTests
     }
 
     [Fact]
+    public void LoadingNewFileClearsPipelineStages()
+    {
+        var vm = new MainViewModel();
+        vm.SetSourceForTests(Sample());
+        vm.Pipeline.AddStage.Execute("sphere-crop");
+
+        var next = Sample();
+        vm.SetSourceForTests(next);
+
+        Assert.Empty(vm.Pipeline.Stages);
+        Assert.Same(next, vm.PointCloud);
+    }
+
+    [Fact]
     public void FilterRemovesPointsFromDisplayedCloud()
     {
         var vm = new MainViewModel();

@@ -169,6 +169,7 @@ public partial class MainViewModel : ViewModelBase
     private void ApplySource(PointCloud cloud)
     {
         SourceCloud = cloud;
+        Pipeline.Reset();
         Pipeline.Source = cloud;
         PointCloud = Pipeline.Output;
     }
