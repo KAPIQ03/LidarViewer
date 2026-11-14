@@ -1259,7 +1259,6 @@ Dodaj nowe pola:
 
 ```csharp
     private bool _colorsDirty = true;
-    private byte[] _colorBuffer = [];
 ```
 
 - [ ] **Step 4: Utwórz VBO kolorów i atrybut w VAO**
@@ -1284,6 +1283,10 @@ wskazywałby na nieistniejący atrybut. Dodaj **przed** `gl.LinkProgram(program)
 
 - [ ] **Step 5: Wgraj kolory**
 
+W `InitGl`, obok `_uploadPending = true;` dodaj `_colorsDirty = true;` — po ponownym
+utworzeniu kontekstu OpenGL bufor kolorów jest nowy i pusty, więc musi zostać wypełniony
+jeszcze raz. Bez tego po odtworzeniu kontekstu punkty dostałyby nieokreślone kolory.
+
 W `PointCloudView3D.cs` dodaj metodę (przed `UploadPoints`):
 
 ```csharp
@@ -1299,13 +1302,9 @@ W `PointCloudView3D.cs` dodaj metodę (przed `UploadPoints`):
 
         var cloud = _cloud;
         if (cloud is null || cloud.Count == 0)
-        {
-            _colorBuffer = [];
             return;
-        }
 
         byte[] rgba = CloudColors.Build(cloud, ColorSettings ?? ColorSettings.Default);
-        _colorBuffer = rgba;
 
         gl.BindBuffer(BufferTargetARB.ArrayBuffer, _colVbo);
         fixed (byte* data = rgba)
