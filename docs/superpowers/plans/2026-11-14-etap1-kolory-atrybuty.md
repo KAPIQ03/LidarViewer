@@ -1574,9 +1574,10 @@ W `MainViewModel.cs` dodaj pola i metody:
 
     partial void OnPointCloudChanged(PointCloud? value)
     {
-        // Nowy plik ma inne wartosci danych, wiec zakres wyliczony dla
-        // poprzedniego pliku przestaje obowiazywac.
-        _rangeUserSet = false;
+        // Nowy plik ma inne wartosci danych, wiec zakres policzony dla
+        // poprzedniego pliku przestaje obowiazywac. Zakres wpisany recznie
+        // przez uzytkownika zostaje - to swiadome ustawienie, a nie
+        // wyliczenie z danych.
         _rangeSeeded = false;
         ApplyRangeForMode();
     }
@@ -1630,7 +1631,11 @@ W `MainViewModel.cs` dodaj pola i metody:
         if (attribute is null)
             return;
 
-        if (!AutoColorRange && _rangeUserSet && ColorRangeMax > ColorRangeMin)
+        // Zakres wpisany recznie przez uzytkownika jest jego decyzja i nie
+        // moze zostac podmieniony - nawet wtedy, gdy jest pusty (min == max)
+        // albo odwrocony. Uzytkownik dostanie wtedy ostrzezenie zamiast
+        // cichego podmienienia na zakres z danych.
+        if (!AutoColorRange && _rangeUserSet)
             return;
 
         SetRange(attribute.Min, attribute.Max);
@@ -1715,6 +1720,10 @@ zastępstwem szarością. Dodaj do `MainViewModel`:
 `[NotifyPropertyChangedFor(nameof(ColorWarning))]` do:
 - `PointCloud` (obecnie `[ObservableProperty]` bez atrybutów)
 - `ColorMode`, `ColorRangeMin`, `ColorRangeMax` (w bloku z Step 1)
+
+Dodaj też `[NotifyPropertyChangedFor(nameof(HasIntensity))]` do `PointCloud` —
+`HasIntensity` jest właściwością wyliczaną z chmury, więc bez tego powiadomienia
+nie odświeżyłaby się po wczytaniu pliku.
 
 - [ ] **Step 4: Testy jednostkowe logiki kolorowania**
 
@@ -1859,7 +1868,47 @@ public class MainViewModelColorRangeTests
     }
 
     [Fact]
-    public void NewCloud_ResetsManualRangeToNewData()
+    public void DegenerateManualRange_SurvivesModeSwitch()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.ColorRangeMin = 50f;
+        vm.ColorRangeMax = 50f;
+
+        vm.ColorMode = ColorMode.Intensity;
+
+        Assert.Equal(50f, vm.ColorRangeMin);
+        Assert.Equal(50f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void InvertedManualRange_SurvivesModeSwitch()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.ColorRangeMin = 300f;
+        vm.ColorRangeMax = 200f;
+
+        vm.ColorMode = ColorMode.Intensity;
+
+        Assert.Equal(300f, vm.ColorRangeMin);
+        Assert.Equal(200f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void NewCloud_ReseedsAutomaticRange()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+
+        vm.PointCloud = Cloud(100f, 400f);
+
+        Assert.Equal(100f, vm.ColorRangeMin);
+        Assert.Equal(400f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void NewCloud_KeepsManualRange()
     {
         var vm = ViewModelWithCloud(Cloud(10f, 250f));
         vm.ColorMode = ColorMode.Distance;
@@ -1869,8 +1918,8 @@ public class MainViewModelColorRangeTests
 
         vm.PointCloud = Cloud(100f, 400f);
 
-        Assert.Equal(100f, vm.ColorRangeMin);
-        Assert.Equal(400f, vm.ColorRangeMax);
+        Assert.Equal(3f, vm.ColorRangeMin);
+        Assert.Equal(7f, vm.ColorRangeMax);
     }
 
     [Fact]
@@ -1920,7 +1969,14 @@ Dopisz projekt do `LidarViewer.slnx` (folder `/tests/`):
 ```
 
 Run: `dotnet test tests/LidarViewer.App.Tests/LidarViewer.App.Tests.csproj -v q --nologo`
-Expected: przed implementacja 5 testow pada (RED), po implementacji 11/11 GREEN.
+Expected: przed implementacja 5 testow pada (RED), po implementacji 14/14 GREEN.
+
+**Uwaga — zakres wpisany recznie nigdy nie jest podmieniany.** Zakres ustawiony
+ręcznie może być pusty (`min == max`) albo odwrócony (`max < min`). W obu
+przypadkach jest to świadomy wybór użytkownika, więc zmiana trybu kolorowania
+musi go zachować, a użytkownik dostanie ostrzeżenie `ColorWarning` zamiast
+cichego podmienienia na zakres z danych. Dlatego warunek ochronny sprawdza
+tylko `_rangeUserSet`, a nie dodatkowo `ColorRangeMax > ColorRangeMin`.
 
 - [ ] **Step 5: Build**
 
