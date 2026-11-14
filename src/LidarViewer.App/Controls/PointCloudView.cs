@@ -155,9 +155,9 @@ public sealed class PointCloudView : Control
     {
         int o = pointIndex * 4;
         return unchecked((int)0xFF000000)
-               | (_colorBuffer[o + 2] << 16)
+               | (_colorBuffer[o] << 16)
                | (_colorBuffer[o + 1] << 8)
-               | _colorBuffer[o];
+               | _colorBuffer[o + 2];
     }
 
     private static float Axis(System.Numerics.Vector3 v, int index) => index switch { 0 => v.X, 1 => v.Y, _ => v.Z };

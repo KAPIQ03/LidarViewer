@@ -1433,12 +1433,13 @@ W `Rasterize` zamień pętlę po punktach:
 
 ```csharp
         var p = cloud.Positions;
+        bool colorsMatch = _colorBuffer.Length == cloud.Count * 4;
         for (int i = 0; i < p.Length; i += 3)
         {
             int pointIndex = i / 3;
             int x = (int)((p[i + ha] - centerX) * scale + offsetX);
             int y = (int)(offsetY - (p[i + va] - centerY) * scale);
-            int color = ToBgra(pointIndex);
+            int color = colorsMatch ? ToBgra(pointIndex) : FallbackColor;
             for (int dy = 0; dy < 2; dy++)
             {
                 int yy = y + dy;
@@ -1453,21 +1454,26 @@ W `Rasterize` zamień pętlę po punktach:
         }
 ```
 
-i dodaj metodę pomocniczą:
+i dodaj metodę pomocniczą oraz stałą:
 
 ```csharp
+    private const int FallbackColor = unchecked((int)0xFF808080);
+
     private int ToBgra(int pointIndex)
     {
         int o = pointIndex * 4;
-        if (o + 3 >= _colorBuffer.Length)
-            return unchecked((int)0xFF808080);
-
-        return _colorBuffer[o]
+        return unchecked((int)0xFF000000)
+               | (_colorBuffer[o] << 16)
                | (_colorBuffer[o + 1] << 8)
-               | (_colorBuffer[o + 2] << 16)
-               | unchecked((int)0xFF000000);
+               | _colorBuffer[o + 2];
     }
 ```
+
+**Uwaga — kolejność kanałów.** Bitmapa jest w formacie `PixelFormat.Bgra8888`, więc w
+pamięci kolejność bajtów to B, G, R, A. Najmniej znaczący bajt `int` musi więc zawierać
+**niebieski** kanał, a czerwony na pozycji 16. Bufor z `CloudColors.Build` trzyma kolejność
+R, G, B, A — dlatego kanały R i B trzeba zamienić miejscami. Poprzednia stała
+`0xFF33E64D` odpowiada temu poprawnie: bajt 0 to B = 0x4D, bajt 2 to R = 0x33.
 
 - [ ] **Step 5: Dodaj `using`**
 
