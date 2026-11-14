@@ -1563,13 +1563,13 @@ a w klasie po `public partial string? Diagnostics { get; set; }` dodaj:
 W `MainViewModel.cs` dodaj pola i metody:
 
 ```csharp
-    // Zakres kolorow ma trzy stany: domyslny (0..1, tylko placeholder),
-    // policzony z danych oraz ustawiony recznie przez uzytkownika.
-    // Roznica miedzy ostatnimi dwoma jest istotna - domyslny zakres nie moze
-    // byc traktowany jak wybor uzytkownika, bo chmura wyswietlalaby sie
+    // Zakres kolorow ma trzy stany: wartosc wpisana recznie przez
+    // uzytkownika, wartosc policzona z danych oraz domyslne 0..1, ktore jest
+    // tylko placeholderem. Roznica miedzy nimi jest istotna - placeholder nie
+    // moze zostac uznany za wybor uzytkownika, bo chmura wyswietlalaby sie
     // jednokolorowo bez zadnego ostrzezenia.
-    private bool _rangeUserSet;
-    private bool _rangeSeeded;
+    private bool _rangeManual;
+    private bool _rangeComputed;
     private bool _updatingRange;
 
     partial void OnPointCloudChanged(PointCloud? value)
@@ -1578,27 +1578,22 @@ W `MainViewModel.cs` dodaj pola i metody:
         // poprzedniego pliku przestaje obowiazywac. Zakres wpisany recznie
         // przez uzytkownika zostaje - to swiadome ustawienie, a nie
         // wyliczenie z danych.
-        _rangeSeeded = false;
-        ApplyRangeForMode();
+        _rangeComputed = false;
+        ApplyRangeForFile();
     }
 
     partial void OnColorModeChanged(ColorMode value) => ApplyRangeForMode();
 
     partial void OnAutoColorRangeChanged(bool value)
     {
-        if (value)
-        {
-            _rangeUserSet = false;
-            ApplyRangeForMode();
+        // Wylaczenie trybu automatycznego nie jest wyborem zakresu - to
+        // jedynie zamrozenie biezacej wartosci. O tym, czy zakres zostal
+        // wpisany recznie, decyduje wylacznie OnManualRangeEdit.
+        if (!value)
             return;
-        }
 
-        // Wylaczenie trybu automatycznego zamraza biezacy zakres, ale tylko
-        // wtedy, gdy pochodzi on z danych. Domyslne 0..1 to placeholder,
-        // a nie wybor uzytkownika - pozostawienie go zamroczonym dalo
-        // jednokolorowa chmure bez ostrzezenia.
-        if (_rangeSeeded)
-            _rangeUserSet = true;
+        _rangeManual = false;
+        ApplyRangeForMode();
     }
 
     partial void OnColorRangeMinChanged(float value) => OnManualRangeEdit();
@@ -1613,50 +1608,72 @@ W `MainViewModel.cs` dodaj pola i metody:
         if (_updatingRange)
             return;
 
-        _rangeUserSet = true;
+        _rangeManual = true;
+        _rangeComputed = false;
 
         if (AutoColorRange)
             AutoColorRange = false;
     }
 
     // Wybor trybu kolorowania ustawia zakres na dane, inaczej chmura
-    // zostalaby jednokolorowa bez zadnego ostrzezenia. Zakres wprowadzony
-    // recznie przez uzytkownika pozostaje nietkniety.
+    // zostalaby jednokolorowa bez zadnego ostrzezenia.
+    //
+    // Tryb reczny zamraza zakres wylacznie wtedy, gdy wartosc pochodzi
+    // z danych. Placeholder 0..1 musi zostac podmieniony w kazdym
+    // przypadku, bo inaczej chmura wyswietlalaby sie jednokolorowo.
     private void ApplyRangeForMode()
     {
         if (PointCloud is null || ColorMode == ColorMode.Solid)
-            return;
-
-        var attribute = PointCloud.GetAttribute(CurrentScalarKind);
-        if (attribute is null)
             return;
 
         // Zakres wpisany recznie przez uzytkownika jest jego decyzja i nie
         // moze zostac podmieniony - nawet wtedy, gdy jest pusty (min == max)
         // albo odwrocony. Uzytkownik dostanie wtedy ostrzezenie zamiast
         // cichego podmienienia na zakres z danych.
-        if (!AutoColorRange && _rangeUserSet)
+        if (_rangeManual)
             return;
 
-        SetRange(attribute.Min, attribute.Max);
+        if (!AutoColorRange && _rangeComputed)
+            return;
+
+        SeedRangeFromData();
     }
 
-    // Zakres ustawiamy w kolejnosci, ktora nigdy nie publikuje odwroconego
-    // zakresu (nowe Min przy starym Max) - chmura flashowaby wtedy jednym kolorem.
-    private void SetRange(float min, float max)
+    // Wczytanie nowego pliku uniewaznia zakres policzony dla poprzedniego,
+    // bo dane moga miec inny zakres wartosci. Zakres wpisany recznie przez
+    // uzytkownika zostaje nietkniety.
+    private void ApplyRangeForFile()
     {
+        if (PointCloud is null || ColorMode == ColorMode.Solid)
+            return;
+
+        if (_rangeManual)
+            return;
+
+        SeedRangeFromData();
+    }
+
+    private void SeedRangeFromData()
+    {
+        var attribute = PointCloud?.GetAttribute(CurrentScalarKind);
+        if (attribute is null)
+            return;
+
         _updatingRange = true;
         try
         {
-            if (min > ColorRangeMax)
+            // Zakres ustawiamy w kolejnosci, ktora nigdy nie publikuje
+            // odwroconego zakresu (nowe Min przy starym Max) - chmura
+            // flashowaby wtedy jednym kolorem.
+            if (attribute.Min > ColorRangeMax)
             {
-                ColorRangeMax = max;
-                ColorRangeMin = min;
+                ColorRangeMax = attribute.Max;
+                ColorRangeMin = attribute.Min;
             }
             else
             {
-                ColorRangeMin = min;
-                ColorRangeMax = max;
+                ColorRangeMin = attribute.Min;
+                ColorRangeMax = attribute.Max;
             }
         }
         finally
@@ -1664,7 +1681,7 @@ W `MainViewModel.cs` dodaj pola i metody:
             _updatingRange = false;
         }
 
-        _rangeSeeded = true;
+        _rangeComputed = true;
     }
 ```
 
@@ -1672,14 +1689,23 @@ W `MainViewModel.cs` dodaj pola i metody:
 właściwości obserwowane, a każda zmiana osobno budzi `ColorSettings`. Gdyby `Min`
 został ustawiony przed `Max`, widok przez jedną klatkę zobaczyłby zakres
 odwrócony (`Max < Min`), a `ColorRamp` spłaszczyłby chmurę do jednego koloru.
-Dlatego `SetRange` ustawia `Max` pierwszy, gdy nowe minimum przekracza dotychczasowe
-maksimum — wtedy żaden stan pośredni nie jest odwrócony ani pusty.
+Dlatego `SeedRangeFromData` ustawia `Max` pierwszy, gdy nowe minimum przekracza
+dotychczasowe maksimum — wtedy żaden stan pośredni nie jest odwrócony ani pusty.
 
 **Uwaga — `_updatingRange`.** CommunityToolkit wywołuje `OnColorRangeMinChanged`
 i `OnColorRangeMaxChanged` **wewnątrz** settera, więc programowe przypisanie
-w `SetRange` też by je odpaliło. Bez flagi `_updatingRange` każde
-automatyczne przeliczenie zakresu wygladalo by jak edycja uzytkownika
+w `SeedRangeFromData` też by je odpaliło. Bez flagi `_updatingRange` każde
+automatyczne przeliczenie zakresu wyglądało by jak edycja uzytkownika
 i od razu wywolalo `AutoColorRange = false`.
+
+**Uwaga — trzy stany zakresu.** `_rangeManual` oznacza zakres wpisany ręcznie
+przez użytkownika, `_rangeComputed` — zakres wyliczony z danych. Odznaczenie
+„Auto zakres” nie jest wyborem zakresu, tylko zamrożeniem bieżącej wartości,
+więc samo odznaczenie nie ustawia `_rangeManual`. Dzięki temu wyłączenie trybu
+auto nie kasuje zakresu ręcznego, a wczytanie nowego pliku zawsze przelicza
+zakres z nowych danych (chyba że użytkownik wpisał własny). Ścieżki
+`ApplyRangeForMode` (zmiana trybu kolorowania) i `ApplyRangeForFile` (wczytanie
+pliku) są rozdzielne, bo mają inne reguły zamrażania.
 
 oraz `using LidarViewer.Core.Models;` (jest już).
 
@@ -1976,7 +2002,7 @@ ręcznie może być pusty (`min == max`) albo odwrócony (`max < min`). W obu
 przypadkach jest to świadomy wybór użytkownika, więc zmiana trybu kolorowania
 musi go zachować, a użytkownik dostanie ostrzeżenie `ColorWarning` zamiast
 cichego podmienienia na zakres z danych. Dlatego warunek ochronny sprawdza
-tylko `_rangeUserSet`, a nie dodatkowo `ColorRangeMax > ColorRangeMin`.
+tylko `_rangeManual`, a nie dodatkowo `ColorRangeMax > ColorRangeMin`.
 
 - [ ] **Step 5: Build**
 
@@ -2055,6 +2081,7 @@ public sealed class ColorLegend : Panel
     static ColorLegend()
     {
         ColorSettingsProperty.Changed.AddClassHandler<ColorLegend>((view, _) => view.Refresh());
+        TitleProperty.Changed.AddClassHandler<ColorLegend>((view, _) => view.Refresh());
     }
 
     public ColorLegend()
@@ -2254,27 +2281,43 @@ na:
                 <Button DockPanel.Dock="Right" Content="Wybierz plik..." Click="OnBrowseClick" />
                 <TextBox Text="{Binding FilePath}" PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .ply, .pcd, .las)" />
             </DockPanel>
-            <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Text="Kolor:" VerticalAlignment="Center" Margin="0,0,4,0" />
-                <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding ColorModes}" SelectedItem="{Binding ColorMode}"
-                          Width="120" />
-                <TextBlock DockPanel.Dock="Right" Text="Mapa:" VerticalAlignment="Center" Margin="12,0,4,0"
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Kolor:" VerticalAlignment="Center" />
+                <ComboBox ItemsSource="{Binding ColorModes}" SelectedItem="{Binding ColorMode}" Width="120" />
+                <TextBlock Text="Mapa:" VerticalAlignment="Center" Margin="12,0,0,0"
                            IsVisible="{Binding ShowLegend}" />
-                <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding Colormaps}" SelectedItem="{Binding Colormap}"
-                          Width="120" IsVisible="{Binding ShowLegend}" />
-                <CheckBox DockPanel.Dock="Right" Content="Auto zakres" IsChecked="{Binding AutoColorRange}"
-                          VerticalAlignment="Center" Margin="12,0,0,0" IsVisible="{Binding ShowLegend}" />
-                <TextBox DockPanel.Dock="Right" Text="{Binding ColorRangeMin}" Width="80" Margin="8,0,0,0"
-                         Converter="{StaticResource FloatText}" IsVisible="{Binding ShowLegend}" />
-                <TextBox DockPanel.Dock="Right" Text="{Binding ColorRangeMax}" Width="80" Margin="4,0,12,0"
-                         Converter="{StaticResource FloatText}" IsVisible="{Binding ShowLegend}" />
-                <TextBlock DockPanel.Dock="Right" Text="min / max" VerticalAlignment="Center" Margin="0,0,4,0"
+                <ComboBox ItemsSource="{Binding Colormaps}" SelectedItem="{Binding Colormap}" Width="120"
+                          IsVisible="{Binding ShowLegend}" />
+                <CheckBox Content="Auto zakres" IsChecked="{Binding AutoColorRange}" VerticalAlignment="Center"
+                          Margin="12,0,0,0" IsVisible="{Binding ShowLegend}" />
+                <TextBlock Text="min / max" VerticalAlignment="Center" Margin="12,0,0,0"
                            IsVisible="{Binding ShowLegend}" />
-                <TextBlock DockPanel.Dock="Right" Text="{Binding ColorWarning}" Foreground="#FFE08A"
-                           VerticalAlignment="Center" Margin="12,0,0,0" />
-            </DockPanel>
+                <TextBox Width="80" IsVisible="{Binding ShowLegend}"
+                         Text="{Binding ColorRangeMin, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
+                <TextBox Width="80" IsVisible="{Binding ShowLegend}"
+                         Text="{Binding ColorRangeMax, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Text="{Binding ColorWarning}" Foreground="#FFE08A" VerticalAlignment="Center"
+                           Margin="12,0,0,0" />
+            </StackPanel>
         </StackPanel>
 ```
+
+**Uwaga — konwerter musi być w bindingu.** W Avalonia `Converter` i
+`UpdateSourceTrigger` są właściwościami obiektu `Binding`, a nie atrybutami
+kontrolki. Zapis `Converter="{StaticResource FloatText}"` na `TextBoxie` daje
+błąd kompilacji XAML (AVLN2000). Poprawna składnia to
+`Text="{Binding ColorRangeMin, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}"`.
+
+**Uwaga — `UpdateSourceTrigger=LostFocus`.** Domyślny `PropertyChanged` jest tu
+zły: po każdym naciśnięciu klawisza model zapisywałby sformatowaną liczbę z powrotem
+do pola, co kasuje separator dziesiętny w trakcie pisania („12.5" staje się „12",
+a następnie „125"). `LostFocus` zostawia surowy tekst w polu, a model aktualizuje
+się dopiero po wyjściu z pola.
+
+**Uwaga — wiersz kolorów to `StackPanel`.** DockPanel z elementami doklejonymi do
+prawej odwraca kolejność wizualną (od prawej do lewej), a w tym wierszu chcemy
+naturalną kolejność od lewej. `Grid.Align` nie istnieje w Avalonia — wyrównanie
+wewnątrz `Grid` ustawia się przez `HorizontalAlignment`/`VerticalAlignment`.
 
 - [ ] **Step 4: Podepnij kolory do widoków i dodaj legendę**
 
@@ -2294,7 +2337,7 @@ na:
                                 Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
             <c:PointCloudView IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}" Plane="{Binding Plane}"
                               ColorSettings="{Binding ColorSettings}" />
-            <Border Grid.Align="Bottom" HorizontalAlignment="Left" Margin="12" Padding="8"
+            <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Padding="8"
                     Background="#D91A1A1A" CornerRadius="4" IsVisible="{Binding ShowLegend}">
                 <c:ColorLegend ColorSettings="{Binding ColorSettings}" Title="{Binding LegendTitle}" />
             </Border>
@@ -2341,9 +2384,9 @@ Expected: pokrycie Core >= 80%.
 
 Uruchom aplikację i sprawdź na `lidar-samples/pdal_autzen_trim.las` (110 000 pkt, intensywność obecna):
 
-1. Wczytanie pliku → punkty widoczne w 3D, domyślnie zielone (tryb Jednolity).
-2. Przełączenie „Kolor" na **Intensywnosc** → chmura przechodzi na gradient szarości; legenda pokazuje pasek gradientu i zakres 0–255.
-3. Przełączenie „Kolor" na **Range** → gradient wg odległości; wartości w pasku statusu rzędu 0–60 m dla tego pliku.
+1. Wczytanie pliku → punkty widoczne w 3D, domyślnie zielone (tryb `Solid`).
+2. Przełączenie „Kolor" na **Intensity** → chmura przechodzi na gradient szarości; legenda pokazuje pasek gradientu i zakres 0–255.
+3. Przełączenie „Kolor" na **Distance** → gradient wg odległości; wartości w pasku statusu rzędu 0–60 m dla tego pliku.
 4. Zmiana mapy na **Viridis** → gradient fiolet→żółty; zmiana na **Turbo** → gradient niebieski→czerwony.
 5. Odznaczenie „Auto zakres" i wpisanie ręcznego min/max → gradient się zmienia, wartości poza zakresem dostają kolor skrajny.
 6. Przełączenie w widok 2D → te same kolory co w 3D.
@@ -2361,6 +2404,18 @@ git commit -m "fix(app): poprawki po recenzji etapu 1"
 ```
 
 Jeśli nie było poprawek — nie twórz pustego commita.
+
+### Wyniki weryfikacji etapu 1
+
+- Build: 0 błędów, 0 ostrzeżeń.
+- Testy: Core 98/98, App 18/18 (w tym `MainViewModelViewModeTests` — regresja
+  przełączania 2D/3D przez powiązanie `IsVisible`).
+- Pokrycie Core: 89,58% linii (wymóg >= 80%).
+- Lista kontrolna: przeszła w całości — wczytanie pliku, tryby `Solid`/`Intensity`/`Distance`,
+  mapy Viridis/Turbo, ręczny zakres 0/100, przełączenie 2D/3D, plik bez intensity
+  (`pcl_lamppost.pcd`) pokazuje ostrzeżenie i szare punkty.
+- Wydajność: `pointCloud.vtp` (11 MB, 345 377 pkt) wczytuje się w 27 ms,
+  przełączenie 2D/3D w 204 ms — UI nie zamraża się.
 
 ---
 
@@ -2391,5 +2446,6 @@ tests/LidarViewer.Core.Tests/ColorRampTests.cs          NOWY
 tests/LidarViewer.Core.Tests/CloudColorsTests.cs        NOWY
 tests/LidarViewer.App.Tests/LidarViewer.App.Tests.csproj    NOWY
 tests/LidarViewer.App.Tests/MainViewModelColorRangeTests.cs NOWY
+tests/LidarViewer.App.Tests/MainViewModelViewModeTests.cs  NOWY
 LidarViewer.slnx                                       ZMIENIONY
 ```
