@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:LidarViewer.App.ViewModels"
         xmlns:c="using:LidarViewer.App.Controls"
+        xmlns:conv="using:LidarViewer.App.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
@@ -10,26 +11,56 @@
         Icon="/Assets/avalonia-logo.ico"
         Title="LidarViewer">
 
+    <Window.Resources>
+        <conv:FloatTextConverter x:Key="FloatText" />
+    </Window.Resources>
+
     <Design.DataContext>
         <vm:MainViewModel />
     </Design.DataContext>
 
     <DockPanel>
-        <DockPanel DockPanel.Dock="Top">
-            <Button DockPanel.Dock="Right" Content="Wyświetl" Command="{Binding LoadCommand}" />
-            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding ViewModes}" SelectedItem="{Binding ViewMode}" />
-            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding Planes}" SelectedItem="{Binding Plane}"
-                      IsVisible="{Binding Is2D}" />
-            <Button DockPanel.Dock="Right" Content="Wybierz plik..." Click="OnBrowseClick" />
-            <TextBox Text="{Binding FilePath}" PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .ply, .pcd, .las)" />
-        </DockPanel>
+        <StackPanel DockPanel.Dock="Top">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Wyświetl" Command="{Binding LoadCommand}" />
+                <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding ViewModes}" SelectedItem="{Binding ViewMode}" />
+                <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding Planes}" SelectedItem="{Binding Plane}"
+                          IsVisible="{Binding Is2D}" />
+                <Button DockPanel.Dock="Right" Content="Wybierz plik..." Click="OnBrowseClick" />
+                <TextBox Text="{Binding FilePath}" PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .ply, .pcd, .las)" />
+            </DockPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Kolor:" VerticalAlignment="Center" />
+                <ComboBox ItemsSource="{Binding ColorModes}" SelectedItem="{Binding ColorMode}" Width="120" />
+                <TextBlock Text="Mapa:" VerticalAlignment="Center" Margin="12,0,0,0"
+                           IsVisible="{Binding ShowLegend}" />
+                <ComboBox ItemsSource="{Binding Colormaps}" SelectedItem="{Binding Colormap}" Width="120"
+                          IsVisible="{Binding ShowLegend}" />
+                <CheckBox Content="Auto zakres" IsChecked="{Binding AutoColorRange}" VerticalAlignment="Center"
+                          Margin="12,0,0,0" IsVisible="{Binding ShowLegend}" />
+                <TextBlock Text="min / max" VerticalAlignment="Center" Margin="12,0,0,0"
+                           IsVisible="{Binding ShowLegend}" />
+                <TextBox Width="80" IsVisible="{Binding ShowLegend}"
+                         Text="{Binding ColorRangeMin, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
+                <TextBox Width="80" IsVisible="{Binding ShowLegend}"
+                         Text="{Binding ColorRangeMax, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Text="{Binding ColorWarning}" Foreground="#FFE08A" VerticalAlignment="Center"
+                           Margin="12,0,0,0" />
+            </StackPanel>
+        </StackPanel>
         <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" />
         <TextBox DockPanel.Dock="Bottom" Text="{Binding Diagnostics, Mode=OneWay}" IsReadOnly="True"
                  AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="120" />
         <Grid>
             <c:PointCloudView3D IsVisible="{Binding Is3D}" PointCloud="{Binding PointCloud}"
+                                ColorSettings="{Binding ColorSettings}"
                                 Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
-            <c:PointCloudView IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}" Plane="{Binding Plane}" />
+            <c:PointCloudView IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}" Plane="{Binding Plane}"
+                              ColorSettings="{Binding ColorSettings}" />
+            <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Padding="8"
+                    Background="#D91A1A1A" CornerRadius="4" IsVisible="{Binding ShowLegend}">
+                <c:ColorLegend ColorSettings="{Binding ColorSettings}" Title="{Binding LegendTitle}" />
+            </Border>
         </Grid>
     </DockPanel>
 
