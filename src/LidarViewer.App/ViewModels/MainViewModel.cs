@@ -307,6 +307,11 @@ public partial class MainViewModel : ViewModelBase
 
         Player.Advance(delta);
 
+        // Odtwarzacz zatrzymuje sie sam na koncu sekwencji - bez tego
+        // powiadomienia timer w oknie krecilby sie dalej na prozno.
+        if (!Player.IsPlaying)
+            OnPropertyChanged(nameof(IsPlaying));
+
         if (!IsScrubbing)
             PositionSeconds = Player.PositionSeconds;
     }

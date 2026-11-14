@@ -110,6 +110,27 @@ public class SequencePlaybackTests : IDisposable
     }
 
     [Fact]
+    public void EndOfSequenceStopsPlayback()
+    {
+        WriteSequence();
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+        vm.PlayPauseCommand.Execute(null);
+
+        bool notified = false;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.IsPlaying)) notified = true;
+        };
+
+        vm.Advance(TimeSpan.FromSeconds(10));
+
+        Assert.False(vm.IsPlaying);
+        Assert.True(notified);
+        Assert.Equal("Klatka 3 / 3", vm.FrameInfo);
+    }
+
+    [Fact]
     public void SpeedSelectionAppliesToPlayer()
     {
         WriteSequence();
