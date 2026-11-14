@@ -64,6 +64,15 @@ public partial class MainViewModel : ViewModelBase
 
     public ColormapKind[] Colormaps { get; } = Enum.GetValues<ColormapKind>();
 
+    // Zakres kolorow ma trzy stany: domyslny (0..1, tylko placeholder),
+    // policzony z danych oraz ustawiony recznie przez uzytkownika.
+    // Roznica miedzy ostatnimi dwoma jest istotna - domyslny zakres nie moze
+    // byc traktowany jak wybor uzytkownika, bo chmura wyswietlalaby sie
+    // jednokolorowo bez zadnego ostrzezenia.
+    private bool _rangeUserSet;
+    private bool _rangeSeeded;
+    private bool _updatingRange;
+
     public ColorSettings ColorSettings => new()
     {
         Mode = ColorMode,
@@ -83,6 +92,9 @@ public partial class MainViewModel : ViewModelBase
 
     public bool HasIntensity => PointCloud?.GetAttribute(ScalarKind.Intensity) is not null;
 
+    private ScalarKind CurrentScalarKind =>
+        ColorMode == ColorMode.Intensity ? ScalarKind.Intensity : ScalarKind.Distance;
+
     public string? ColorWarning
     {
         get
@@ -90,8 +102,15 @@ public partial class MainViewModel : ViewModelBase
             if (ColorMode == ColorMode.Intensity && !HasIntensity)
                 return "Ten plik nie zawiera atrybutu intensity - punkty sa pokazane na szaro.";
 
-            if (ColorMode != ColorMode.Solid && ColorSettings.IsDegenerate)
+            if (ColorMode == ColorMode.Solid)
+                return null;
+
+            if (ColorSettings.IsDegenerate)
                 return "Zakres kolorow jest pusty (min >= max) - wszystkie punkty maja jeden kolor.";
+
+            var attribute = PointCloud?.GetAttribute(CurrentScalarKind);
+            if (attribute is not null && (attribute.Min > ColorRangeMax || attribute.Max < ColorRangeMin))
+                return "Zakres kolorow lezy poza danymi - wszystkie punkty maja jeden kolor.";
 
             return null;
         }
@@ -115,7 +134,6 @@ public partial class MainViewModel : ViewModelBase
         {
             var cloud = await Task.Run(() => PointCloudLoader.Read(path));
             PointCloud = cloud;
-            ApplyAutoRange();
             Status = $"Wczytano {cloud.Count:N0} punktów ({System.IO.Path.GetFileName(path)}).";
         }
         catch (Exception ex)
@@ -124,35 +142,65 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    partial void OnPointCloudChanged(PointCloud? value)
+    {
+        // Nowy plik ma inne wartosci danych, wiec zakres wyliczony dla
+        // poprzedniego pliku przestaje obowiazywac.
+        _rangeUserSet = false;
+        _rangeSeeded = false;
+        ApplyRangeForMode();
+    }
+
     partial void OnColorModeChanged(ColorMode value) => ApplyRangeForMode();
 
-    partial void OnAutoColorRangeChanged(bool value) => ApplyAutoRange();
-
-    private void ApplyAutoRange()
+    partial void OnAutoColorRangeChanged(bool value)
     {
-        if (!AutoColorRange || PointCloud is null)
+        if (value)
+        {
+            _rangeUserSet = false;
+            ApplyRangeForMode();
+            return;
+        }
+
+        // Wylaczenie trybu automatycznego zamraza biezacy zakres, ale tylko
+        // wtedy, gdy pochodzi on z danych. Domyslne 0..1 to placeholder,
+        // a nie wybor uzytkownika - pozostawienie go zamroczonym dalo
+        // jednokolorowa chmure bez ostrzezenia.
+        if (_rangeSeeded)
+            _rangeUserSet = true;
+    }
+
+    partial void OnColorRangeMinChanged(float value) => OnManualRangeEdit();
+
+    partial void OnColorRangeMaxChanged(float value) => OnManualRangeEdit();
+
+    // Reczna zmiana min lub max oznacza wybor uzytkownika, wiec zakres
+    // przestaje byc automatyczny. Inaczej wpisana wartosc zostalaby
+    // nadpisana przy zmianie trybu kolorowania.
+    private void OnManualRangeEdit()
+    {
+        if (_updatingRange)
             return;
 
-        ApplyRangeForMode();
+        _rangeUserSet = true;
+
+        if (AutoColorRange)
+            AutoColorRange = false;
     }
 
     // Wybor trybu kolorowania ustawia zakres na dane, inaczej chmura
     // zostalaby jednokolorowa bez zadnego ostrzezenia. Zakres wprowadzony
-    // recznie przez uzytkownika pozostaje nietkniety, dopoki nie jest pusty.
+    // recznie przez uzytkownika pozostaje nietkniety.
     private void ApplyRangeForMode()
     {
         if (PointCloud is null || ColorMode == ColorMode.Solid)
             return;
 
-        ScalarKind kind = ColorMode == ColorMode.Intensity
-            ? ScalarKind.Intensity
-            : ScalarKind.Distance;
-
-        var attribute = PointCloud.GetAttribute(kind);
+        var attribute = PointCloud.GetAttribute(CurrentScalarKind);
         if (attribute is null)
             return;
 
-        if (!AutoColorRange && ColorRangeMax > ColorRangeMin)
+        if (!AutoColorRange && _rangeUserSet && ColorRangeMax > ColorRangeMin)
             return;
 
         SetRange(attribute.Min, attribute.Max);
@@ -162,15 +210,25 @@ public partial class MainViewModel : ViewModelBase
     // zakresu (nowe Min przy starym Max) - chmura flashowaby wtedy jednym kolorem.
     private void SetRange(float min, float max)
     {
-        if (min > ColorRangeMax)
+        _updatingRange = true;
+        try
         {
-            ColorRangeMax = max;
-            ColorRangeMin = min;
+            if (min > ColorRangeMax)
+            {
+                ColorRangeMax = max;
+                ColorRangeMin = min;
+            }
+            else
+            {
+                ColorRangeMin = min;
+                ColorRangeMax = max;
+            }
         }
-        else
+        finally
         {
-            ColorRangeMin = min;
-            ColorRangeMax = max;
+            _updatingRange = false;
         }
+
+        _rangeSeeded = true;
     }
 }
