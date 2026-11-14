@@ -72,6 +72,9 @@ var cloud = new PointCloud([0f, 0f, 0f,  3f, 4f, 0f]) { Origin = (10, 0, 0) };
 **Testy — nowe:**
 `tests/LidarViewer.Core.Tests/PointAttributeTests.cs`, `ScalarFieldsTests.cs`, `ColormapsTests.cs`, `ColorRampTests.cs`, `CloudColorsTests.cs`
 
+Nowy projekt `tests/LidarViewer.App.Tests/` (testy logiki view modelu):
+`LidarViewer.App.Tests.csproj`, `MainViewModelColorRangeTests.cs`
+
 ---
 
 ### Task 1: `PointAttribute` i `ScalarKind`
@@ -1557,38 +1560,77 @@ a w klasie po `public partial string? Diagnostics { get; set; }` dodaj:
 ```
 
 - [ ] **Step 2: Dodaj automatyczne dopasowanie zakresu**
-W `MainViewModel.cs` dodaj metody:
+W `MainViewModel.cs` dodaj pola i metody:
 
 ```csharp
+    // Zakres kolorow ma trzy stany: domyslny (0..1, tylko placeholder),
+    // policzony z danych oraz ustawiony recznie przez uzytkownika.
+    // Roznica miedzy ostatnimi dwoma jest istotna - domyslny zakres nie moze
+    // byc traktowany jak wybor uzytkownika, bo chmura wyswietlalaby sie
+    // jednokolorowo bez zadnego ostrzezenia.
+    private bool _rangeUserSet;
+    private bool _rangeSeeded;
+    private bool _updatingRange;
+
+    partial void OnPointCloudChanged(PointCloud? value)
+    {
+        // Nowy plik ma inne wartosci danych, wiec zakres wyliczony dla
+        // poprzedniego pliku przestaje obowiazywac.
+        _rangeUserSet = false;
+        _rangeSeeded = false;
+        ApplyRangeForMode();
+    }
+
     partial void OnColorModeChanged(ColorMode value) => ApplyRangeForMode();
 
-    partial void OnAutoColorRangeChanged(bool value) => ApplyAutoRange();
-
-    private void ApplyAutoRange()
+    partial void OnAutoColorRangeChanged(bool value)
     {
-        if (!AutoColorRange || PointCloud is null)
+        if (value)
+        {
+            _rangeUserSet = false;
+            ApplyRangeForMode();
+            return;
+        }
+
+        // Wylaczenie trybu automatycznego zamraza biezacy zakres, ale tylko
+        // wtedy, gdy pochodzi on z danych. Domyslne 0..1 to placeholder,
+        // a nie wybor uzytkownika - pozostawienie go zamroczonym dalo
+        // jednokolorowa chmure bez ostrzezenia.
+        if (_rangeSeeded)
+            _rangeUserSet = true;
+    }
+
+    partial void OnColorRangeMinChanged(float value) => OnManualRangeEdit();
+
+    partial void OnColorRangeMaxChanged(float value) => OnManualRangeEdit();
+
+    // Reczna zmiana min lub max oznacza wybor uzytkownika, wiec zakres
+    // przestaje byc automatyczny. Inaczej wpisana wartosc zostalaby
+    // nadpisana przy zmianie trybu kolorowania.
+    private void OnManualRangeEdit()
+    {
+        if (_updatingRange)
             return;
 
-        ApplyRangeForMode();
+        _rangeUserSet = true;
+
+        if (AutoColorRange)
+            AutoColorRange = false;
     }
 
     // Wybor trybu kolorowania ustawia zakres na dane, inaczej chmura
     // zostalaby jednokolorowa bez zadnego ostrzezenia. Zakres wprowadzony
-    // recznie przez uzytkownika pozostaje nietkniety, dopoki nie jest pusty.
+    // recznie przez uzytkownika pozostaje nietkniety.
     private void ApplyRangeForMode()
     {
         if (PointCloud is null || ColorMode == ColorMode.Solid)
             return;
 
-        ScalarKind kind = ColorMode == ColorMode.Intensity
-            ? ScalarKind.Intensity
-            : ScalarKind.Distance;
-
-        var attribute = PointCloud.GetAttribute(kind);
+        var attribute = PointCloud.GetAttribute(CurrentScalarKind);
         if (attribute is null)
             return;
 
-        if (!AutoColorRange && ColorRangeMax > ColorRangeMin)
+        if (!AutoColorRange && _rangeUserSet && ColorRangeMax > ColorRangeMin)
             return;
 
         SetRange(attribute.Min, attribute.Max);
@@ -1598,16 +1640,26 @@ W `MainViewModel.cs` dodaj metody:
     // zakresu (nowe Min przy starym Max) - chmura flashowaby wtedy jednym kolorem.
     private void SetRange(float min, float max)
     {
-        if (min > ColorRangeMax)
+        _updatingRange = true;
+        try
         {
-            ColorRangeMax = max;
-            ColorRangeMin = min;
+            if (min > ColorRangeMax)
+            {
+                ColorRangeMax = max;
+                ColorRangeMin = min;
+            }
+            else
+            {
+                ColorRangeMin = min;
+                ColorRangeMax = max;
+            }
         }
-        else
+        finally
         {
-            ColorRangeMin = min;
-            ColorRangeMax = max;
+            _updatingRange = false;
         }
+
+        _rangeSeeded = true;
     }
 ```
 
@@ -1617,6 +1669,12 @@ został ustawiony przed `Max`, widok przez jedną klatkę zobaczyłby zakres
 odwrócony (`Max < Min`), a `ColorRamp` spłaszczyłby chmurę do jednego koloru.
 Dlatego `SetRange` ustawia `Max` pierwszy, gdy nowe minimum przekracza dotychczasowe
 maksimum — wtedy żaden stan pośredni nie jest odwrócony ani pusty.
+
+**Uwaga — `_updatingRange`.** CommunityToolkit wywołuje `OnColorRangeMinChanged`
+i `OnColorRangeMaxChanged` **wewnątrz** settera, więc programowe przypisanie
+w `SetRange` też by je odpaliło. Bez flagi `_updatingRange` każde
+automatyczne przeliczenie zakresu wygladalo by jak edycja uzytkownika
+i od razu wywolalo `AutoColorRange = false`.
 
 oraz `using LidarViewer.Core.Models;` (jest już).
 
@@ -1628,6 +1686,9 @@ zastępstwem szarością. Dodaj do `MainViewModel`:
 ```csharp
     public bool HasIntensity => PointCloud?.GetAttribute(ScalarKind.Intensity) is not null;
 
+    private ScalarKind CurrentScalarKind =>
+        ColorMode == ColorMode.Intensity ? ScalarKind.Intensity : ScalarKind.Distance;
+
     public string? ColorWarning
     {
         get
@@ -1635,8 +1696,15 @@ zastępstwem szarością. Dodaj do `MainViewModel`:
             if (ColorMode == ColorMode.Intensity && !HasIntensity)
                 return "Ten plik nie zawiera atrybutu intensity - punkty sa pokazane na szaro.";
 
-            if (ColorMode != ColorMode.Solid && ColorSettings.IsDegenerate)
+            if (ColorMode == ColorMode.Solid)
+                return null;
+
+            if (ColorSettings.IsDegenerate)
                 return "Zakres kolorow jest pusty (min >= max) - wszystkie punkty maja jeden kolor.";
+
+            var attribute = PointCloud?.GetAttribute(CurrentScalarKind);
+            if (attribute is not null && (attribute.Min > ColorRangeMax || attribute.Max < ColorRangeMin))
+                return "Zakres kolorow lezy poza danymi - wszystkie punkty maja jeden kolor.";
 
             return null;
         }
@@ -1648,13 +1716,211 @@ zastępstwem szarością. Dodaj do `MainViewModel`:
 - `PointCloud` (obecnie `[ObservableProperty]` bez atrybutów)
 - `ColorMode`, `ColorRangeMin`, `ColorRangeMax` (w bloku z Step 1)
 
-- [ ] **Step 4: Wywołaj `ApplyAutoRange` po wczytaniu pliku**
+- [ ] **Step 4: Testy jednostkowe logiki kolorowania**
 
-W metodzie `LoadAsync`, po linii `PointCloud = cloud;` dodaj:
+Logika zakresu jest jedynym miejscem, gdzie blad daje cicho zle wyniki
+(jednokolorowa chmura), wiec musi byc pokryta testami. `MainViewModel` nie
+uzywa Avalonia, wiec testy dzialaja bez inicjalizacji UI.
+
+Nowy projekt `tests/LidarViewer.App.Tests/LidarViewer.App.Tests.csproj`:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LidarViewer.App\LidarViewer.App.csproj" />
+  </ItemGroup>
+
+</Project>
+```
+
+`tests/LidarViewer.App.Tests/MainViewModelColorRangeTests.cs`:
 
 ```csharp
-            ApplyAutoRange();
+using System.ComponentModel;
+using LidarViewer.App.ViewModels;
+using LidarViewer.Core.Models;
+using LidarViewer.Core.Rendering;
+
+namespace LidarViewer.App.Tests;
+
+public class MainViewModelColorRangeTests
+{
+    // Dwa punkty w odleglosci 10 i 250 od sensora, intensywnosci 0 i 255.
+    private static PointCloud Cloud(float near, float far) =>
+        new([near, 0f, 0f, far, 0f, 0f], [0, 255]);
+
+    private static MainViewModel ViewModelWithCloud(PointCloud cloud) =>
+        new() { PointCloud = cloud };
+
+    [Fact]
+    public void SwitchToDistance_SeedsRangeFromData()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+
+        vm.ColorMode = ColorMode.Distance;
+
+        Assert.Equal(10f, vm.ColorRangeMin);
+        Assert.Equal(250f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void SwitchToIntensity_SeedsRangeFromData()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+
+        vm.ColorMode = ColorMode.Intensity;
+
+        Assert.Equal(0f, vm.ColorRangeMin);
+        Assert.Equal(255f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void ManualRange_SurvivesModeSwitch()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.AutoColorRange = false;
+        vm.ColorRangeMin = 3f;
+        vm.ColorRangeMax = 7f;
+
+        vm.ColorMode = ColorMode.Distance;
+
+        Assert.Equal(3f, vm.ColorRangeMin);
+        Assert.Equal(7f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void UntouchedDefaultRange_IsSeededFromData()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.AutoColorRange = false;
+
+        vm.ColorMode = ColorMode.Distance;
+
+        Assert.Equal(10f, vm.ColorRangeMin);
+        Assert.Equal(250f, vm.ColorRangeMax);
+        Assert.Null(vm.ColorWarning);
+    }
+
+    [Fact]
+    public void ManualEdit_SwitchesOffAutomaticRange()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+
+        vm.ColorRangeMin = 3f;
+
+        Assert.False(vm.AutoColorRange);
+    }
+
+    [Fact]
+    public void SwitchingAutomaticRangeOn_ResetsRangeToData()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.AutoColorRange = false;
+        vm.ColorRangeMin = 3f;
+        vm.ColorRangeMax = 7f;
+
+        vm.AutoColorRange = true;
+
+        Assert.Equal(10f, vm.ColorRangeMin);
+        Assert.Equal(250f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void PublishedRange_IsNeverReversed()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        var published = new List<(float Min, float Max)>();
+        vm.PropertyChanged += OnRangeChanged(vm, published);
+
+        vm.ColorMode = ColorMode.Distance;
+
+        Assert.NotEmpty(published);
+        Assert.All(published, p => Assert.True(p.Max >= p.Min, $"odwrocony zakres {p.Min}..{p.Max}"));
+    }
+
+    [Fact]
+    public void NewCloud_ResetsManualRangeToNewData()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.AutoColorRange = false;
+        vm.ColorRangeMin = 3f;
+        vm.ColorRangeMax = 7f;
+
+        vm.PointCloud = Cloud(100f, 400f);
+
+        Assert.Equal(100f, vm.ColorRangeMin);
+        Assert.Equal(400f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void Warning_WhenRangeDoesNotCoverData()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.AutoColorRange = false;
+        vm.ColorRangeMin = 300f;
+        vm.ColorRangeMax = 400f;
+
+        Assert.NotNull(vm.ColorWarning);
+    }
+
+    [Fact]
+    public void Warning_WhenIntensityIsMissing()
+    {
+        var vm = ViewModelWithCloud(new PointCloud([0f, 0f, 0f]));
+
+        vm.ColorMode = ColorMode.Intensity;
+
+        Assert.NotNull(vm.ColorWarning);
+    }
+
+    [Fact]
+    public void NoWarning_WhenSolidMode()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+
+        Assert.Null(vm.ColorWarning);
+        Assert.False(vm.ShowLegend);
+    }
+
+    private static PropertyChangedEventHandler OnRangeChanged(MainViewModel vm, List<(float Min, float Max)> published) =>
+        (_, e) =>
+        {
+            if (e.PropertyName is nameof(MainViewModel.ColorRangeMin) or nameof(MainViewModel.ColorRangeMax))
+                published.Add((vm.ColorRangeMin, vm.ColorRangeMax));
+        };
+}
 ```
+
+Dopisz projekt do `LidarViewer.slnx` (folder `/tests/`):
+
+```xml
+    <Project Path="tests/LidarViewer.App.Tests/LidarViewer.App.Tests.csproj" />
+```
+
+Run: `dotnet test tests/LidarViewer.App.Tests/LidarViewer.App.Tests.csproj -v q --nologo`
+Expected: przed implementacja 5 testow pada (RED), po implementacji 11/11 GREEN.
 
 - [ ] **Step 5: Build**
 
@@ -1664,8 +1930,11 @@ Expected: Build succeeded, 0 errors. Upewnij się, że CommunityToolkit wygenero
 - [ ] **Step 6: Commit**
 
 ```bash
+git add tests/LidarViewer.App.Tests LidarViewer.slnx
+git commit -m "test(app): projekty testowy dla logiki kolorow"
+
 git add src/LidarViewer.App/ViewModels/MainViewModel.cs
-git commit -m "feat(app): stan kolorowania i automatyczny zakres w view modelu"
+git commit -m "fix(app): domyslny zakres nie jest traktowany jak wybor uzytkownika"
 ```
 
 ---
@@ -1785,7 +2054,7 @@ public sealed class ColorLegend : Panel
     private static IBrush BuildBrush(ColormapKind map)
     {
         var lut = Colormaps.Build(map);
-        var stops = new GradientStopCollection();
+        var stops = new GradientStops();
 
         for (int i = 0; i < StopsPerMap; i++)
         {
@@ -1812,7 +2081,10 @@ public sealed class ColorLegend : Panel
 Run: `dotnet build LidarViewer.slnx -v q --nologo`
 Expected: Build succeeded, 0 errors.
 
-Jeśli `Avalonia.Layout` nie jest potrzebny — usuń ten `using`. Jeśli kompilator zgłosi, że `RelativePoint` jest w `Avalonia` — jest w `Avalonia` namespace, więc `using Avalonia;` wystarczy.
+**Uwaga — typ gradientu.** W Avalonia 12.1.4 nie ma `GradientStopCollection`.
+Kolekcja stopni gradientu to `Avalonia.Media.GradientStops`, a `LinearGradientBrush.GradientStops`
+przyjmuje właśnie ten typ. `RelativePoint` i `RelativeUnit` są w namespace `Avalonia`,
+więc `using Avalonia;` wystarczy.
 
 - [ ] **Step 3: Commit**
 
@@ -1871,6 +2143,15 @@ public sealed class FloatTextConverter : IValueConverter
         if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out result))
             return result;
 
+        // Ostatnia proba: przecinek jako separator dziesietny. System z kultura
+        // angielska odrzucilby "12,5", a uzytkownik pisze po polsku.
+        if (text.Contains(','))
+        {
+            string dot = text.Replace(',', '.');
+            if (float.TryParse(dot, NumberStyles.Float, CultureInfo.InvariantCulture, out result))
+                return result;
+        }
+
         // Niepoprawna wartosc nie moze trafic do modelu - inaczej pole
         // po cichu cofnie sie do poprzedniej wartosci.
         return BindingOperations.DoNothing;
@@ -1879,8 +2160,9 @@ public sealed class FloatTextConverter : IValueConverter
 ```
 
 `NumberStyles.Float` nie dopuszcza separatora tysięcy, więc `12.5` w kulturze PL
-przechodzi próbę z `InvariantCulture` i daje `12.5`, a `12,5` w kulturze EN nie
-przechodzi żadnej próby (przecinek nie jest separatorem dziesiętnym).
+przechodzi próbę z `InvariantCulture` i daje `12.5`, a `12,5` w kulturze PL daje `12.5`
+przez pierwszą próbę. Trzecia próba obsługuje odwrotną sytuację: system angielski
+i użytkownik pisujący po polsku.
 
 - [ ] **Step 2: Zarejestruj konwerter w XAML**
 
@@ -2051,4 +2333,7 @@ tests/LidarViewer.Core.Tests/ScalarFieldsTests.cs       NOWY
 tests/LidarViewer.Core.Tests/ColormapsTests.cs          NOWY
 tests/LidarViewer.Core.Tests/ColorRampTests.cs          NOWY
 tests/LidarViewer.Core.Tests/CloudColorsTests.cs        NOWY
+tests/LidarViewer.App.Tests/LidarViewer.App.Tests.csproj    NOWY
+tests/LidarViewer.App.Tests/MainViewModelColorRangeTests.cs NOWY
+LidarViewer.slnx                                       ZMIENIONY
 ```
