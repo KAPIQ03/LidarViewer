@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -62,6 +63,50 @@ public partial class MainWindow : Window
             vm.LoadSequenceCommand.Execute(path);
     }
 
+    private async void OnSaveAsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Zapisz chmurę punktów",
+            SuggestedFileName = "chmura.ply",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("Chmura PLY") { Patterns = ["*.ply"] },
+                new FilePickerFileType("Punkty tekstowe") { Patterns = ["*.xyz", "*.csv"] },
+            ],
+        });
+
+        if (file?.TryGetLocalPath() is { } path)
+            vm.ExportCloud(path);
+    }
+
+    private async void OnRecordClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Wybierz katalog nagrania",
+        });
+
+        if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } parent)
+            return;
+
+        // Kazde nagranie dostaje wlasny podkatalog, wiec kolejne nagrania
+        // nie nadpisuja poprzedniego.
+        string target = Path.Combine(parent, $"nagranie-{DateTime.Now:yyyyMMdd-HHmmss}");
+        vm.StartRecording(target);
+    }
+
+    private async void OnStopRecordingClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        await vm.StopRecordingAsync();
+    }
+
     private void OnScrubStart(object? sender, PointerPressedEventArgs e)
     {
         if (DataContext is MainViewModel vm)
@@ -107,12 +152,17 @@ public partial class MainWindow : Window
             _timer.IsEnabled = (DataContext as MainViewModel)?.IsPlaying ?? false;
     }
 
-    // Zamkniecie okna nie moze zostawic odbiornika UDP na zywo.
-    private void OnClosed(object? sender, EventArgs e)
+    // Zamkniecie okna nie moze zostawic odbiornika UDP na zywo. Trwajace
+    // nagranie trzeba zakonczyc, inaczej manifest nigdy nie powstanie
+    // i zapisane klatki nie da sie odtworzyc.
+    private async void OnClosed(object? sender, EventArgs e)
     {
         _timer.Stop();
         _vm?.SimulatorEnabled = false;
         _vm?.StopLiveCommand.Execute(null);
+
+        if (_vm is { IsRecording: true })
+            await _vm.StopRecordingAsync();
     }
 
     private void OnTick(object? sender, EventArgs e)

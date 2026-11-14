@@ -28,10 +28,11 @@
         <StackPanel Grid.Row="0" x:Name="Toolbar" Margin="6,6,6,2" Spacing="2">
             <WrapPanel>
                 <TextBox Text="{Binding FilePath}" Width="320" Margin="0,0,6,4"
-                         PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .ply, .pcd, .las)" />
+                         PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .xyz, .ply, .pcd, .las)" />
                 <Button Content="Wybierz plik..." Click="OnBrowseClick" Margin="0,0,6,4" />
                 <Button Content="Sekwencja..." Click="OnBrowseSequenceClick" Margin="0,0,6,4" />
                 <Button Content="Wyświetl" Command="{Binding LoadCommand}" Margin="0,0,6,4" />
+                <Button Content="Zapisz jako..." x:Name="SaveAsButton" Click="OnSaveAsClick" Margin="0,0,6,4" />
                 <ComboBox ItemsSource="{Binding ViewModes}" SelectedItem="{Binding ViewMode}"
                           Width="110" Margin="0,0,6,4" VerticalAlignment="Center" />
                 <ComboBox ItemsSource="{Binding Planes}" SelectedItem="{Binding Plane}" Width="90"
@@ -73,6 +74,12 @@
                         VerticalAlignment="Center" IsEnabled="{Binding !IsLive}" />
                 <Button Content="Stop" Command="{Binding StopLiveCommand}" Margin="0,0,6,4"
                         VerticalAlignment="Center" IsVisible="{Binding IsLive}" />
+                <Button Content="Nagrywaj" x:Name="RecordButton" Click="OnRecordClick" Margin="0,0,6,4"
+                        VerticalAlignment="Center" IsVisible="{Binding CanStartRecording}" />
+                <Button Content="Stop nagrania" x:Name="StopRecordButton" Click="OnStopRecordingClick" Margin="0,0,6,4"
+                        VerticalAlignment="Center" IsVisible="{Binding IsRecording}" />
+                <TextBlock Text="{Binding RecordInfo}" VerticalAlignment="Center" Margin="0,0,6,4"
+                           IsVisible="{Binding IsRecording}" />
                 <CheckBox Content="Symulator" IsChecked="{Binding SimulatorEnabled}" VerticalAlignment="Center"
                           Margin="0,0,6,4" />
             </WrapPanel>

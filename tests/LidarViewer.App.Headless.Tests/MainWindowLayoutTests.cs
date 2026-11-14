@@ -134,6 +134,60 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
+    // Przyciski zapisu i nagrywania musza byc w pasku narzedzi i miescic
+    // sie w szerokosci okna.
+    [AvaloniaFact]
+    public void ExportAndRecordButtonsFitInToolbar()
+    {
+        var (window, _) = ShowWindow();
+
+        var save = window.FindControl<Button>("SaveAsButton");
+        var record = window.FindControl<Button>("RecordButton");
+        var stop = window.FindControl<Button>("StopRecordButton");
+
+        Assert.NotNull(save);
+        Assert.NotNull(record);
+        Assert.NotNull(stop);
+
+        foreach (Button button in new[] { save!, record!, stop! })
+        {
+            Rect rect = ToWindow(button, window);
+            Assert.True(rect.Right <= Width, $"Przycisk wychodzi poza okno: {rect}.");
+        }
+
+        window.Close();
+    }
+
+    // Przycisk nagrywania pojawia sie dopiero w trybie live, bo bez
+    // strumienia nie ma czego nagrywac.
+    [AvaloniaFact]
+    public void RecordButtonAppearsOnlyInLiveMode()
+    {
+        var vm = new MainViewModel { ViewMode = ViewMode.Widok2D, LivePort = 34811 };
+        var window = new MainWindow { DataContext = vm, Width = Width, Height = Height };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var record = window.FindControl<Button>("RecordButton");
+        var stop = window.FindControl<Button>("StopRecordButton");
+        Assert.NotNull(record);
+        Assert.NotNull(stop);
+
+        Assert.False(record!.IsVisible);
+        Assert.False(stop!.IsVisible);
+
+        vm.StartLiveCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.True(record.IsVisible);
+
+        Rect rect = ToWindow(record, window);
+        Assert.True(rect.Right <= Width, $"Przycisk nagrywania wychodzi poza okno: {rect}.");
+
+        window.Close();
+        vm.StopLiveCommand.Execute(null);
+    }
+
     // Zrzut okna do pliku - pozwala ocenic wyglad bez uruchamiania
     // aplikacji na desktopie.
     [AvaloniaFact]

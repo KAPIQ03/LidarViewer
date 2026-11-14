@@ -11,6 +11,7 @@ public static class PointCloudLoader
             [".vtp"] = VtpReader.Read,
             [".vtk"] = VtkReader.Read,
             [".csv"] = CsvReader.Read,
+            [".xyz"] = CsvReader.Read,
             [".ply"] = PlyReader.Read,
             [".pcd"] = PcdReader.Read,
             [".las"] = LasReader.Read,
