@@ -26,6 +26,8 @@ range = |world| = |Positions + Origin|
 
 Dla plików w układzie sensora (offset = 0, np. `pdal_autzen_trim.las`) to dokładnie **zasięg pomiaru od sensora**. Dla plików georeferencjonowanych (offset UTM, np. `laspy_vegetation_1_3.las`) to odległość od lokalnego początku układu — wartości rzędu 10^5 m. Dla klatek live z Velodyne `Origin = (0,0,0)`, więc `range = |p|`.
 
+Z tej samej zasady korzysta atrybut `Height`: wysokość to **składowa Z w układzie świata**, czyli `Positions[i*3+2] + Origin.Z`. `Distance` i `Height` muszą być liczone w tym samym układzie — inaczej filtr po wysokości w etapie 2 ciąłby po złej skali.
+
 **Kod referencyjny dla testu:**
 ```csharp
 var cloud = new PointCloud([0f, 0f, 0f,  3f, 4f, 0f]) { Origin = (10, 0, 0) };
@@ -303,6 +305,17 @@ public class ScalarFieldsTests
     }
 
     [Fact]
+    public void GetAttribute_Height_UsesWorldCoordinateIncludingOrigin()
+    {
+        var cloud = new PointCloud([0f, 0f, 2f]) { Origin = (10, 20, 100) };
+
+        var attr = cloud.GetAttribute(ScalarKind.Height);
+
+        Assert.NotNull(attr);
+        Assert.Equal(102f, attr.Values[0], 4);
+    }
+
+    [Fact]
     public void GetAttribute_ReturnsSameInstanceOnSecondCall()
     {
         var cloud = new PointCloud([0f, 0f, 0f, 1f, 0f, 0f]);
@@ -375,7 +388,7 @@ W `src/LidarViewer.Core/Models/PointCloud.cs` dodaj do klasy `PointCloud` (przed
     {
         var values = new float[Count];
         for (int i = 0; i < Count; i++)
-            values[i] = Positions[i * 3 + 2];
+            values[i] = Positions[i * 3 + 2] + (float)Origin.Z;
 
         return new PointAttribute("height", values);
     }
@@ -384,7 +397,7 @@ W `src/LidarViewer.Core/Models/PointCloud.cs` dodaj do klasy `PointCloud` (przed
 - [ ] **Step 4: Uruchom test — ma przejść**
 
 Run: `dotnet test tests/LidarViewer.Core.Tests/LidarViewer.Core.Tests.csproj --filter "FullyQualifiedName~ScalarFieldsTests"`
-Expected: PASS — 5 testów.
+Expected: PASS — 6 testów.
 
 - [ ] **Step 5: Uruchom cały zestaw testów Core**
 
