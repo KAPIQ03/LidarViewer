@@ -1059,6 +1059,15 @@ W `InitGl`, po linii `_gl.EnableVertexAttribArray(0);` dodaj:
         _gl.EnableVertexAttribArray(1);
 ```
 
+**Uwaga — wymagane dopisanie wiązania atrybutu.** W metodzie `BuildProgram` istnieje już
+`gl.BindAttribLocation(program, 0, "aPos");` przed linkowaniem. Bez analogicznego
+przypisania dla koloru GLSL nada atrybutowi `aColor` losowy numer i wskaźnik 1
+wskazywałby na nieistniejący atrybut. Dodaj **przed** `gl.LinkProgram(program)`:
+
+```csharp
+        gl.BindAttribLocation(program, 1, "aColor");
+```
+
 - [ ] **Step 5: Wgraj kolory**
 
 W `PointCloudView3D.cs` dodaj metodę (przed `UploadPoints`):
@@ -1158,6 +1167,21 @@ oraz w konstruktorze statycznym dopisz handler:
 ```csharp
         ColorSettingsProperty.Changed.AddClassHandler<PointCloudView>((view, _) => view.InvalidateColors());
 ```
+
+**Uwaga — kolory muszą być przebudowane także przy zmianie chmury.** Handler istniejący
+dla `PointCloudProperty` zmień z jednolinijkowego na blok, inaczej po wczytaniu nowego
+pliku punkty dostaną kolory ze starej chmury:
+
+```csharp
+        PointCloudProperty.Changed.AddClassHandler<PointCloudView>((view, _) =>
+        {
+            view.ResetView();
+            view.InvalidateColors();
+        });
+```
+
+Po tej zmianie stała `private const int PointColor = unchecked((int)0xFF33E64D);`
+przestaje być używana — usuń ją, żeby nie było ostrzeżenia CS0414.
 
 - [ ] **Step 2: Dodaj cache kolorów**
 
