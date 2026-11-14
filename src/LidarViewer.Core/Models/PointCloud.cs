@@ -49,6 +49,61 @@ public sealed class PointCloud
         return (min, max);
     }
 
+    private readonly Dictionary<ScalarKind, PointAttribute> _attributeCache = [];
+
+    public PointAttribute? GetAttribute(ScalarKind kind)
+    {
+        if (_attributeCache.TryGetValue(kind, out var cached))
+            return cached;
+
+        PointAttribute? computed = kind switch
+        {
+            ScalarKind.Intensity => BuildIntensityAttribute(),
+            ScalarKind.Distance => BuildDistanceAttribute(),
+            ScalarKind.Height => BuildHeightAttribute(),
+            _ => null,
+        };
+
+        if (computed is not null)
+            _attributeCache[kind] = computed;
+
+        return computed;
+    }
+
+    private PointAttribute? BuildIntensityAttribute()
+    {
+        if (Intensity is null) return null;
+
+        var values = new float[Intensity.Length];
+        for (int i = 0; i < Intensity.Length; i++)
+            values[i] = Intensity[i];
+
+        return new PointAttribute("intensity", values);
+    }
+
+    private PointAttribute BuildDistanceAttribute()
+    {
+        var values = new float[Count];
+        for (int i = 0; i < Count; i++)
+        {
+            float x = Positions[i * 3] + (float)Origin.X;
+            float y = Positions[i * 3 + 1] + (float)Origin.Y;
+            float z = Positions[i * 3 + 2] + (float)Origin.Z;
+            values[i] = MathF.Sqrt(x * x + y * y + z * z);
+        }
+
+        return new PointAttribute("distance", values);
+    }
+
+    private PointAttribute BuildHeightAttribute()
+    {
+        var values = new float[Count];
+        for (int i = 0; i < Count; i++)
+            values[i] = Positions[i * 3 + 2] + (float)Origin.Z;
+
+        return new PointAttribute("height", values);
+    }
+
     public PointCloud WithoutInvalidPoints()
     {
         int valid = 0;
