@@ -64,6 +64,12 @@ public class ColormapsTests
     }
 
     [Fact]
+    public void Build_UnknownKind_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => Colormaps.Build((ColormapKind)99));
+    }
+
+    [Fact]
     public void All_ContainsEveryKind()
     {
         Assert.Equal(4, Colormaps.All.Count);

@@ -63,10 +63,11 @@ public static class Colormaps
             float t = (float)i / (size - 1);
             lut[i] = kind switch
             {
+                ColormapKind.Grayscale => Grayscale(t),
                 ColormapKind.Viridis => FromAnchors(t, ViridisAnchors),
                 ColormapKind.Turbo => FromAnchors(t, TurboAnchors),
                 ColormapKind.Jet => FromAnchors(t, JetAnchors),
-                _ => Grayscale(t),
+                _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Nieznana mapa kolorow."),
             };
         }
 
