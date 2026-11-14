@@ -375,10 +375,10 @@ W `src/LidarViewer.Core/Models/PointCloud.cs` dodaj do klasy `PointCloud` (przed
         var values = new float[Count];
         for (int i = 0; i < Count; i++)
         {
-            float x = Positions[i * 3] + (float)Origin.X;
-            float y = Positions[i * 3 + 1] + (float)Origin.Y;
-            float z = Positions[i * 3 + 2] + (float)Origin.Z;
-            values[i] = MathF.Sqrt(x * x + y * y + z * z);
+            double x = Positions[i * 3] + Origin.X;
+            double y = Positions[i * 3 + 1] + Origin.Y;
+            double z = Positions[i * 3 + 2] + Origin.Z;
+            values[i] = (float)Math.Sqrt(x * x + y * y + z * z);
         }
 
         return new PointAttribute("distance", values);
