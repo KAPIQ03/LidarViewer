@@ -5,7 +5,7 @@
         xmlns:conv="using:LidarViewer.App.Converters"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="600"
         x:Class="LidarViewer.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
@@ -13,55 +13,128 @@
 
     <Window.Resources>
         <conv:FloatTextConverter x:Key="FloatText" />
+        <conv:NumberTextConverter x:Key="NumberText" />
+        <conv:FilterKindToBoolConverter x:Key="KindToBool" />
     </Window.Resources>
 
     <Design.DataContext>
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <DockPanel>
-        <StackPanel DockPanel.Dock="Top">
-            <DockPanel>
-                <Button DockPanel.Dock="Right" Content="Wyświetl" Command="{Binding LoadCommand}" />
-                <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding ViewModes}" SelectedItem="{Binding ViewMode}" />
-                <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding Planes}" SelectedItem="{Binding Plane}"
-                          IsVisible="{Binding Is2D}" />
-                <Button DockPanel.Dock="Right" Content="Wybierz plik..." Click="OnBrowseClick" />
-                <TextBox Text="{Binding FilePath}" PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .ply, .pcd, .las)" />
-            </DockPanel>
-            <StackPanel Orientation="Horizontal" Spacing="6">
-                <TextBlock Text="Kolor:" VerticalAlignment="Center" />
-                <ComboBox ItemsSource="{Binding ColorModes}" SelectedItem="{Binding ColorMode}" Width="120" />
-                <TextBlock Text="Mapa:" VerticalAlignment="Center" Margin="12,0,0,0"
-                           IsVisible="{Binding ShowLegend}" />
-                <ComboBox ItemsSource="{Binding Colormaps}" SelectedItem="{Binding Colormap}" Width="120"
-                          IsVisible="{Binding ShowLegend}" />
-                <CheckBox Content="Auto zakres" IsChecked="{Binding AutoColorRange}" VerticalAlignment="Center"
-                          Margin="12,0,0,0" IsVisible="{Binding ShowLegend}" />
-                <TextBlock Text="min / max" VerticalAlignment="Center" Margin="12,0,0,0"
-                           IsVisible="{Binding ShowLegend}" />
-                <TextBox Width="80" IsVisible="{Binding ShowLegend}"
-                         Text="{Binding ColorRangeMin, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
-                <TextBox Width="80" IsVisible="{Binding ShowLegend}"
-                         Text="{Binding ColorRangeMax, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
-                <TextBlock Text="{Binding ColorWarning}" Foreground="#FFE08A" VerticalAlignment="Center"
-                           Margin="12,0,0,0" />
+    <Grid ColumnDefinitions="*,Auto">
+        <DockPanel Grid.Column="0">
+            <StackPanel DockPanel.Dock="Top">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Wyświetl" Command="{Binding LoadCommand}" />
+                    <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding ViewModes}" SelectedItem="{Binding ViewMode}" />
+                    <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding Planes}" SelectedItem="{Binding Plane}"
+                              IsVisible="{Binding Is2D}" />
+                    <Button DockPanel.Dock="Right" Content="Wybierz plik..." Click="OnBrowseClick" />
+                    <TextBox Text="{Binding FilePath}" PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .ply, .pcd, .las)" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Kolor:" VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding ColorModes}" SelectedItem="{Binding ColorMode}" Width="120" />
+                    <TextBlock Text="Mapa:" VerticalAlignment="Center" Margin="12,0,0,0"
+                               IsVisible="{Binding ShowLegend}" />
+                    <ComboBox ItemsSource="{Binding Colormaps}" SelectedItem="{Binding Colormap}" Width="120"
+                              IsVisible="{Binding ShowLegend}" />
+                    <CheckBox Content="Auto zakres" IsChecked="{Binding AutoColorRange}" VerticalAlignment="Center"
+                              Margin="12,0,0,0" IsVisible="{Binding ShowLegend}" />
+                    <TextBlock Text="min / max" VerticalAlignment="Center" Margin="12,0,0,0"
+                               IsVisible="{Binding ShowLegend}" />
+                    <TextBox Width="80" IsVisible="{Binding ShowLegend}"
+                             Text="{Binding ColorRangeMin, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
+                    <TextBox Width="80" IsVisible="{Binding ShowLegend}"
+                             Text="{Binding ColorRangeMax, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
+                    <TextBlock Text="{Binding ColorWarning}" Foreground="#FFE08A" VerticalAlignment="Center"
+                               Margin="12,0,0,0" />
+                </StackPanel>
             </StackPanel>
-        </StackPanel>
-        <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" />
-        <TextBox DockPanel.Dock="Bottom" Text="{Binding Diagnostics, Mode=OneWay}" IsReadOnly="True"
-                 AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="120" />
-        <Grid>
-            <c:PointCloudView3D IsVisible="{Binding Is3D}" PointCloud="{Binding PointCloud}"
-                                ColorSettings="{Binding ColorSettings}"
-                                Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
-            <c:PointCloudView IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}" Plane="{Binding Plane}"
-                              ColorSettings="{Binding ColorSettings}" />
-            <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Padding="8"
-                    Background="#D91A1A1A" CornerRadius="4" IsVisible="{Binding ShowLegend}">
-                <c:ColorLegend ColorSettings="{Binding ColorSettings}" Title="{Binding LegendTitle}" />
-            </Border>
-        </Grid>
-    </DockPanel>
+            <TextBlock DockPanel.Dock="Bottom" Text="{Binding Status}" />
+            <TextBox DockPanel.Dock="Bottom" Text="{Binding Diagnostics, Mode=OneWay}" IsReadOnly="True"
+                     AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="120" />
+            <Grid>
+                <c:PointCloudView3D IsVisible="{Binding Is3D}" PointCloud="{Binding PointCloud}"
+                                    ColorSettings="{Binding ColorSettings}"
+                                    Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
+                <c:PointCloudView IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}" Plane="{Binding Plane}"
+                                  ColorSettings="{Binding ColorSettings}" />
+                <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Padding="8"
+                        Background="#D91A1A1A" CornerRadius="4" IsVisible="{Binding ShowLegend}">
+                    <c:ColorLegend ColorSettings="{Binding ColorSettings}" Title="{Binding LegendTitle}" />
+                </Border>
+            </Grid>
+        </DockPanel>
+
+        <ScrollViewer Grid.Column="1" Width="320" Background="#F2202020" BorderBrush="#40FFFFFF"
+                      BorderThickness="1,0,0,0">
+            <StackPanel Margin="12" Spacing="8">
+                <TextBlock Text="Filtry" FontSize="16" FontWeight="Bold" />
+
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <ComboBox ItemsSource="{Binding Pipeline.AvailableFilters}"
+                              SelectedItem="{Binding Pipeline.SelectedAvailableFilter}"
+                              DisplayMemberBinding="{Binding Name}" Width="200" />
+                    <Button Content="Dodaj" Command="{Binding Pipeline.AddStage}"
+                            CommandParameter="{Binding Pipeline.SelectedAvailableFilter.Id}" />
+                </StackPanel>
+
+                <ListBox ItemsSource="{Binding Pipeline.Stages}" SelectedItem="{Binding Pipeline.SelectedStage}"
+                         MaxHeight="240">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PipelineStageViewModel">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4">
+                                <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Name}" />
+                                    <TextBlock FontSize="11" Opacity="0.7">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0:N0} → {1:N0} pkt">
+                                                <Binding Path="InputCount" />
+                                                <Binding Path="OutputCount" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="▲" Margin="2,0"
+                                            Command="{Binding $parent[ListBox].DataContext.Pipeline.MoveStageUp}"
+                                            CommandParameter="{Binding Index}" />
+                                    <Button Content="▼" Margin="2,0"
+                                            Command="{Binding $parent[ListBox].DataContext.Pipeline.MoveStageDown}"
+                                            CommandParameter="{Binding Index}" />
+                                    <Button Content="✕" Margin="2,0"
+                                            Command="{Binding $parent[ListBox].DataContext.Pipeline.RemoveStage}"
+                                            CommandParameter="{Binding Index}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <StackPanel IsVisible="{Binding Pipeline.HasEditor}" Spacing="6">
+                    <TextBlock Text="{Binding Pipeline.Editor.Title}" FontWeight="Bold" />
+                    <ItemsControl ItemsSource="{Binding Pipeline.Editor.Parameters}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FilterParameterViewModel">
+                                <StackPanel Spacing="2" Margin="0,4">
+                                    <TextBlock Text="{Binding Label}" FontSize="11" />
+                                    <TextBox Text="{Binding Number, Converter={StaticResource NumberText}, UpdateSourceTrigger=LostFocus}"
+                                             IsVisible="{Binding Kind, Converter={StaticResource KindToBool}, ConverterParameter=Number}" />
+                                    <ComboBox ItemsSource="{Binding Choices}" SelectedIndex="{Binding SelectedChoice}"
+                                              IsVisible="{Binding Kind, Converter={StaticResource KindToBool}, ConverterParameter=Choice}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button Content="Zastosuj" Command="{Binding Pipeline.Editor.Apply}" />
+                        <Button Content="Anuluj" Command="{Binding Pipeline.Editor.Cancel}" />
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 
 </Window>

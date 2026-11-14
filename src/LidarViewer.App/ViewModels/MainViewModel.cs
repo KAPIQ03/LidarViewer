@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,6 +18,15 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ColorWarning))]
     [NotifyPropertyChangedFor(nameof(HasIntensity))]
     public partial PointCloud? PointCloud { get; set; }
+
+    /// <summary>
+    /// Wczytany plik - zrodlo pipeline. Punkty widoczne w scenie to wynik
+    /// filtrow, a nie surowa chmura.
+    /// </summary>
+    [ObservableProperty]
+    public partial PointCloud? SourceCloud { get; set; }
+
+    public PipelineViewModel Pipeline { get; } = new();
 
     [ObservableProperty]
     public partial ProjectionPlane Plane { get; set; } = ProjectionPlane.XY;
@@ -119,6 +129,20 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty]
     public partial string Status { get; set; } = "Podaj ścieżkę do pliku .vtp.";
 
+    public MainViewModel()
+    {
+        Pipeline.PropertyChanged += OnPipelinePropertyChanged;
+    }
+
+    /// <summary>
+    /// Jawne wejscie dla testow - produkcja wczytuje plik komenda Load.
+    /// </summary>
+    public void SetSourceForTests(PointCloud cloud)
+    {
+        ArgumentNullException.ThrowIfNull(cloud);
+        ApplySource(cloud);
+    }
+
     [RelayCommand]
     private async Task LoadAsync()
     {
@@ -133,13 +157,31 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             var cloud = await Task.Run(() => PointCloudLoader.Read(path));
-            PointCloud = cloud;
+            ApplySource(cloud);
             Status = $"Wczytano {cloud.Count:N0} punktów ({System.IO.Path.GetFileName(path)}).";
         }
         catch (Exception ex)
         {
             Status = $"Błąd: {ex.Message}";
         }
+    }
+
+    private void ApplySource(PointCloud cloud)
+    {
+        SourceCloud = cloud;
+        Pipeline.Source = cloud;
+        PointCloud = Pipeline.Output;
+    }
+
+    private void OnPipelinePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PipelineViewModel.Output))
+            return;
+
+        PointCloud = Pipeline.Output;
+
+        if (Pipeline.Output is not null)
+            Status = $"Po filtrach: {Pipeline.Output.Count:N0} punktów.";
     }
 
     partial void OnPointCloudChanged(PointCloud? value)

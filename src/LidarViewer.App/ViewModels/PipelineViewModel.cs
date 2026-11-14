@@ -30,7 +30,10 @@ public sealed partial class PipelineViewModel : ViewModelBase
     public partial PipelineStageViewModel? SelectedStage { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEditor))]
     public partial FilterEditorViewModel? Editor { get; set; }
+
+    public bool HasEditor => Editor is not null;
 
     public ObservableCollection<PipelineStageViewModel> Stages { get; } = [];
 
