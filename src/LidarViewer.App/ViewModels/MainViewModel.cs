@@ -77,7 +77,7 @@ public partial class MainViewModel : ViewModelBase
     public string LegendTitle => ColorMode switch
     {
         ColorMode.Intensity => "Intensywnosc",
-        ColorMode.Distance => "Range (odleglosc od sensora)",
+        ColorMode.Distance => "Odleglosc od sensora",
         _ => "Jednolity",
     };
 
@@ -136,8 +136,9 @@ public partial class MainViewModel : ViewModelBase
         ApplyRangeForMode();
     }
 
-    // Wybor trybu kolorowania zawsze ustawia zakres na dane, inaczej chmura
-    // zostalaby jednokolorowa bez zadnego ostrzezenia.
+    // Wybor trybu kolorowania ustawia zakres na dane, inaczej chmura
+    // zostalaby jednokolorowa bez zadnego ostrzezenia. Zakres wprowadzony
+    // recznie przez uzytkownika pozostaje nietkniety, dopoki nie jest pusty.
     private void ApplyRangeForMode()
     {
         if (PointCloud is null || ColorMode == ColorMode.Solid)
@@ -151,7 +152,25 @@ public partial class MainViewModel : ViewModelBase
         if (attribute is null)
             return;
 
-        ColorRangeMin = attribute.Min;
-        ColorRangeMax = attribute.Max;
+        if (!AutoColorRange && ColorRangeMax > ColorRangeMin)
+            return;
+
+        SetRange(attribute.Min, attribute.Max);
+    }
+
+    // Zakres ustawiamy w kolejnosci, ktora nigdy nie publikuje odwroconego
+    // zakresu (nowe Min przy starym Max) - chmura flashowaby wtedy jednym kolorem.
+    private void SetRange(float min, float max)
+    {
+        if (min > ColorRangeMax)
+        {
+            ColorRangeMax = max;
+            ColorRangeMin = min;
+        }
+        else
+        {
+            ColorRangeMin = min;
+            ColorRangeMax = max;
+        }
     }
 }
