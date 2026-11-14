@@ -187,6 +187,32 @@ public class MainViewModelColorRangeTests
         Assert.False(vm.ShowLegend);
     }
 
+    [Fact]
+    public void NewFile_ReseedsFrozenRange()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.AutoColorRange = false;
+
+        vm.PointCloud = Cloud(100f, 400f);
+
+        Assert.Equal(100f, vm.ColorRangeMin);
+        Assert.Equal(400f, vm.ColorRangeMax);
+    }
+
+    [Fact]
+    public void FrozenRange_SurvivesModeSwitch()
+    {
+        var vm = ViewModelWithCloud(Cloud(10f, 250f));
+        vm.ColorMode = ColorMode.Distance;
+        vm.AutoColorRange = false;
+
+        vm.ColorMode = ColorMode.Intensity;
+
+        Assert.Equal(10f, vm.ColorRangeMin);
+        Assert.Equal(250f, vm.ColorRangeMax);
+    }
+
     private static PropertyChangedEventHandler OnRangeChanged(MainViewModel vm, List<(float Min, float Max)> published) =>
         (_, e) =>
         {

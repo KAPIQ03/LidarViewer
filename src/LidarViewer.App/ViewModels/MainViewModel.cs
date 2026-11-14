@@ -64,13 +64,13 @@ public partial class MainViewModel : ViewModelBase
 
     public ColormapKind[] Colormaps { get; } = Enum.GetValues<ColormapKind>();
 
-    // Zakres kolorow ma trzy stany: domyslny (0..1, tylko placeholder),
-    // policzony z danych oraz ustawiony recznie przez uzytkownika.
-    // Roznica miedzy ostatnimi dwoma jest istotna - domyslny zakres nie moze
-    // byc traktowany jak wybor uzytkownika, bo chmura wyswietlalaby sie
+    // Zakres kolorow ma trzy stany: wartosc wpisana recznie przez
+    // uzytkownika, wartosc policzona z danych oraz domyslne 0..1, ktore jest
+    // tylko placeholderem. Roznica miedzy nimi jest istotna - placeholder nie
+    // moze zostac uznany za wybor uzytkownika, bo chmura wyswietlalaby sie
     // jednokolorowo bez zadnego ostrzezenia.
-    private bool _rangeUserSet;
-    private bool _rangeSeeded;
+    private bool _rangeManual;
+    private bool _rangeComputed;
     private bool _updatingRange;
 
     public ColorSettings ColorSettings => new()
@@ -148,27 +148,22 @@ public partial class MainViewModel : ViewModelBase
         // poprzedniego pliku przestaje obowiazywac. Zakres wpisany recznie
         // przez uzytkownika zostaje - to swiadome ustawienie, a nie
         // wyliczenie z danych.
-        _rangeSeeded = false;
-        ApplyRangeForMode();
+        _rangeComputed = false;
+        ApplyRangeForFile();
     }
 
     partial void OnColorModeChanged(ColorMode value) => ApplyRangeForMode();
 
     partial void OnAutoColorRangeChanged(bool value)
     {
-        if (value)
-        {
-            _rangeUserSet = false;
-            ApplyRangeForMode();
+        // Wylaczenie trybu automatycznego nie jest wyborem zakresu - to
+        // jedynie zamrozenie biezacej wartosci. O tym, czy zakres zostal
+        // wpisany recznie, decyduje wylacznie OnManualRangeEdit.
+        if (!value)
             return;
-        }
 
-        // Wylaczenie trybu automatycznego zamraza biezacy zakres, ale tylko
-        // wtedy, gdy pochodzi on z danych. Domyslne 0..1 to placeholder,
-        // a nie wybor uzytkownika - pozostawienie go zamroczonym dalo
-        // jednokolorowa chmure bez ostrzezenia.
-        if (_rangeSeeded)
-            _rangeUserSet = true;
+        _rangeManual = false;
+        ApplyRangeForMode();
     }
 
     partial void OnColorRangeMinChanged(float value) => OnManualRangeEdit();
@@ -183,50 +178,72 @@ public partial class MainViewModel : ViewModelBase
         if (_updatingRange)
             return;
 
-        _rangeUserSet = true;
+        _rangeManual = true;
+        _rangeComputed = false;
 
         if (AutoColorRange)
             AutoColorRange = false;
     }
 
     // Wybor trybu kolorowania ustawia zakres na dane, inaczej chmura
-    // zostalaby jednokolorowa bez zadnego ostrzezenia. Zakres wprowadzony
-    // recznie przez uzytkownika pozostaje nietkniety.
+    // zostalaby jednokolorowa bez zadnego ostrzezenia.
+    //
+    // Tryb reczny zamraza zakres wylacznie wtedy, gdy wartosc pochodzi
+    // z danych. Placeholder 0..1 musi zostac podmieniony w kazdym
+    // przypadku, bo inaczej chmura wyswietlalaby sie jednokolorowo.
     private void ApplyRangeForMode()
     {
         if (PointCloud is null || ColorMode == ColorMode.Solid)
-            return;
-
-        var attribute = PointCloud.GetAttribute(CurrentScalarKind);
-        if (attribute is null)
             return;
 
         // Zakres wpisany recznie przez uzytkownika jest jego decyzja i nie
         // moze zostac podmieniony - nawet wtedy, gdy jest pusty (min == max)
         // albo odwrocony. Uzytkownik dostanie wtedy ostrzezenie zamiast
         // cichego podmienienia na zakres z danych.
-        if (!AutoColorRange && _rangeUserSet)
+        if (_rangeManual)
             return;
 
-        SetRange(attribute.Min, attribute.Max);
+        if (!AutoColorRange && _rangeComputed)
+            return;
+
+        SeedRangeFromData();
     }
 
-    // Zakres ustawiamy w kolejnosci, ktora nigdy nie publikuje odwroconego
-    // zakresu (nowe Min przy starym Max) - chmura flashowaby wtedy jednym kolorem.
-    private void SetRange(float min, float max)
+    // Wczytanie nowego pliku uniewaznia zakres policzony dla poprzedniego,
+    // bo dane moga miec inny zakres wartosci. Zakres wpisany recznie przez
+    // uzytkownika zostaje nietkniety.
+    private void ApplyRangeForFile()
     {
+        if (PointCloud is null || ColorMode == ColorMode.Solid)
+            return;
+
+        if (_rangeManual)
+            return;
+
+        SeedRangeFromData();
+    }
+
+    private void SeedRangeFromData()
+    {
+        var attribute = PointCloud?.GetAttribute(CurrentScalarKind);
+        if (attribute is null)
+            return;
+
         _updatingRange = true;
         try
         {
-            if (min > ColorRangeMax)
+            // Zakres ustawiamy w kolejnosci, ktora nigdy nie publikuje
+            // odwroconego zakresu (nowe Min przy starym Max) - chmura
+            // flashowaby wtedy jednym kolorem.
+            if (attribute.Min > ColorRangeMax)
             {
-                ColorRangeMax = max;
-                ColorRangeMin = min;
+                ColorRangeMax = attribute.Max;
+                ColorRangeMin = attribute.Min;
             }
             else
             {
-                ColorRangeMin = min;
-                ColorRangeMax = max;
+                ColorRangeMin = attribute.Min;
+                ColorRangeMax = attribute.Max;
             }
         }
         finally
@@ -234,6 +251,6 @@ public partial class MainViewModel : ViewModelBase
             _updatingRange = false;
         }
 
-        _rangeSeeded = true;
+        _rangeComputed = true;
     }
 }
