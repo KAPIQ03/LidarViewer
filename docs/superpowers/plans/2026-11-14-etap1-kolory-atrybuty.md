@@ -745,6 +745,64 @@ public class ColorRampTests
 
         Assert.Equal(First, ramp.ColorAt(float.NaN));
     }
+
+    [Fact]
+    public void ColorAt_PositiveInfinity_ReturnsLastColor()
+    {
+        var ramp = new ColorRamp(ColormapKind.Grayscale, 10f, 20f);
+
+        Assert.Equal(Last, ramp.ColorAt(float.PositiveInfinity));
+    }
+
+    [Fact]
+    public void ColorAt_NegativeInfinity_ReturnsFirstColor()
+    {
+        var ramp = new ColorRamp(ColormapKind.Grayscale, 10f, 20f);
+
+        Assert.Equal(First, ramp.ColorAt(float.NegativeInfinity));
+    }
+
+    [Fact]
+    public void ColorAt_SwappedRange_ReturnsFirstColor()
+    {
+        var ramp = new ColorRamp(ColormapKind.Grayscale, 20f, 10f);
+
+        Assert.Equal(First, ramp.ColorAt(15f));
+    }
+
+    [Fact]
+    public void ColorAt_NonGrayscaleMap_UsesMapEndpoints()
+    {
+        var ramp = new ColorRamp(ColormapKind.Viridis, 0f, 1f);
+
+        Assert.Equal(new Rgb(68, 1, 84), ramp.ColorAt(0f));
+        Assert.Equal(new Rgb(253, 231, 37), ramp.ColorAt(1f));
+    }
+
+    [Fact]
+    public void ColorAt_ExtremeRange_DoesNotOverflow()
+    {
+        var ramp = new ColorRamp(ColormapKind.Grayscale, -float.MaxValue, float.MaxValue);
+
+        Assert.Equal(First, ramp.ColorAt(-float.MaxValue));
+        Assert.Equal(Last, ramp.ColorAt(float.MaxValue));
+    }
+
+    [Fact]
+    public void IsDegenerate_TrueOnlyWhenRangeCollapsed()
+    {
+        Assert.True(new ColorRamp(ColormapKind.Grayscale, 5f, 5f).IsDegenerate);
+        Assert.True(new ColorRamp(ColormapKind.Grayscale, 20f, 10f).IsDegenerate);
+        Assert.False(new ColorRamp(ColormapKind.Grayscale, 10f, 20f).IsDegenerate);
+    }
+
+    [Fact]
+    public void Settings_IsDegenerate_WhenMaxNotGreaterThanMin()
+    {
+        Assert.False(ColorSettings.Default.IsDegenerate);
+        Assert.True(new ColorSettings { Min = 5f, Max = 5f }.IsDegenerate);
+        Assert.True(new ColorSettings { Min = 10f, Max = 5f }.IsDegenerate);
+    }
 }
 ```
 
@@ -762,6 +820,7 @@ namespace LidarViewer.Core.Rendering;
 public sealed class ColorRamp
 {
     private readonly Rgb[] _lut;
+    private readonly double _scale;
 
     public ColormapKind Map { get; }
 
@@ -769,25 +828,32 @@ public sealed class ColorRamp
 
     public float Max { get; }
 
+    public bool IsDegenerate => _scale == 0d;
+
     public ColorRamp(ColormapKind map, float min, float max, int size = Colormaps.DefaultSize)
     {
         Map = map;
         Min = min;
         Max = max;
         _lut = Colormaps.Build(map, size);
+
+        // Skala liczona w double: przy skrajnych wartosciach float roznica
+        // Max - Min moglaby przeplac do nieskonczonosci.
+        double range = (double)max - min;
+        _scale = range > 0d && double.IsFinite(range) ? 1d / range : 0d;
     }
 
     public Rgb ColorAt(float value)
     {
-        if (Max <= Min)
+        if (_scale == 0d)
             return _lut[0];
 
-        float t = (value - Min) / (Max - Min);
-        if (float.IsNaN(t))
+        double t = ((double)value - Min) * _scale;
+        if (double.IsNaN(t))
             return _lut[0];
 
-        t = Math.Clamp(t, 0f, 1f);
-        int index = (int)(t * (_lut.Length - 1) + 0.5f);
+        t = Math.Clamp(t, 0d, 1d);
+        int index = (int)(t * (_lut.Length - 1) + 0.5d);
         return _lut[index];
     }
 }
@@ -822,13 +888,15 @@ public sealed record ColorSettings
     public float Max { get; init; } = 1f;
 
     public Rgba Solid { get; init; } = new(0x33, 0xE6, 0x4D, 0xFF);
+
+    public bool IsDegenerate => Max <= Min;
 }
 ```
 
 - [ ] **Step 4: Uruchom test — ma przejść**
 
 Run: `dotnet test tests/LidarViewer.Core.Tests/LidarViewer.Core.Tests.csproj --filter "FullyQualifiedName~ColorRampTests"`
-Expected: PASS — 7 testów.
+Expected: PASS — 14 testów.
 
 - [ ] **Step 5: Commit**
 
@@ -1397,13 +1465,23 @@ a w klasie po `public partial string? Diagnostics { get; set; }` dodaj:
 W `MainViewModel.cs` dodaj metody:
 
 ```csharp
-    partial void OnColorModeChanged(ColorMode value) => ApplyAutoRange();
+    partial void OnColorModeChanged(ColorMode value) => ApplyRangeForMode();
 
     partial void OnAutoColorRangeChanged(bool value) => ApplyAutoRange();
 
     private void ApplyAutoRange()
     {
         if (!AutoColorRange || PointCloud is null)
+            return;
+
+        ApplyRangeForMode();
+    }
+
+    // Wybor trybu kolorowania zawsze ustawia zakres na dane, inaczej chmura
+    // zostalaby jednokolorowa bez zadnego ostrzezenia.
+    private void ApplyRangeForMode()
+    {
+        if (PointCloud is null || ColorMode == ColorMode.Solid)
             return;
 
         ScalarKind kind = ColorMode == ColorMode.Intensity
