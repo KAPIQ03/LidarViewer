@@ -1,23 +1,25 @@
 # LidarViewer
 
-Przegladarka chmur punktow z czujnikow lidar. Aplikacja desktopowa (.NET 10, Avalonia,
-OpenGL) do odtwarzania plikow z chmurami punktow, ogladania ich w 2D i 3D, filtrowania,
-podlaczenia do czujnika na zywo przez UDP oraz nagrywania i eksportu.
+Przegladarka chmur punktow z czujnikow lidar. Aplikacja desktopowa (.NET 10, Avalonia 12,
+OpenGL) do odtwarzania plikow i nagran z chmurami punktow, ogladania ich w 2D i 3D,
+filtrowania, podlaczenia do czujnika Velodyne na zywo przez UDP oraz nagrywania i eksportu.
 
-Celem projektu jest mniejsza wersja VeloView / LidarView 5.2.
+Wzorem interfejsu i zachowania jest VeloView 5.1.
 
 ## Stan projektu
 
-Wszystkie zaplanowane etapy sa zaimplementowane na branchu `feat/lidar-toolkit`:
+Zaimplementowane na branchu `feat/lidar-toolkit`:
 
-| Etap | Zakres | Status |
-|---|---|---|
-| 1 | Kolory i atrybuty punktow | gotowe |
-| 2 | Filtry i pipeline filtrow | gotowe |
-| 3 | Sekwencje chmur punktow (odtwarzanie) | gotowe |
-| 4 | Tryb live po UDP | gotowe |
-| 5 | Uporzadkowany interfejs | gotowe |
-| 6 | Nagrywanie i eksport chmur | gotowe |
+| Zakres | Status |
+|---|---|
+| Wczytywanie plikow (VTP, VTK, CSV, PLY, PCD, LAS), widok 3D i 2D | gotowe |
+| Kolorowanie, mapy kolorow, filtry i pipeline filtrow | gotowe |
+| Interfejs w stylu VeloView (menu, pasek ikon, panel boczny, pasek stanu, kostka orientacji) | gotowe |
+| Odtwarzanie sekwencji i nagran pcap | gotowe |
+| Nagrywanie (surowe pakiety do pcap, klatki PLY) | gotowe |
+| Tryb na zywo: Velodyne (VLP-16, HDL-32E, db.xml) i protokol wlasny | gotowe |
+| Eksport (PLY, PCD, LAS, CSV/XYZ), zrzut widoku do PNG | gotowe |
+| Narzedzia: pomiar odleglosci, tabela punktow, siatka i osie | gotowe |
 
 ## Uruchomienie
 
@@ -31,63 +33,87 @@ Testy:
 dotnet test LidarViewer.slnx
 ```
 
+Na macOS aplikacja wymusza renderowanie przez OpenGL (`AvaloniaNativeRenderingMode.OpenGl`),
+bo domyslny Metal nie wspolpracuje z kontrolka OpenGL. Bledy GL widac w logu diagnostycznym
+(menu `Pomoc`).
+
+## Interfejs
+
+- **Menu**: Plik, Widok, Live, Narzedzia, Pomoc.
+- **Pasek ikon**: po lewej otwieranie plikow i sekwencji, zapis, zrzut ekranu, start i stop trybu
+  na zywo, siatka, osie, pomiar, dopasowanie widoku. Po prawej przyciski `Tabela punktow`
+  i `Panel boczny`.
+- **Panel boczny** (Expandery): Wyglad, Zrodlo na zywo, Filtry.
+- **Pasek stanu**: liczba punktow, zrodlo danych, a w trybie live pakiety/s, klatki/s i liczba
+  odrzuconych pakietow.
+- **Kostka orientacji** w rogu widoku 3D: klik w sciane ustawia kamere wzdluz osi.
+- Motyw ciemny, ikony z `Material.Icons.Avalonia`.
+
 ## Funkcje
 
 ### Wczytywanie plikow
 
-Obslugiwane formaty: `.vtp`, `.vtk`, `.csv`, `.xyz`, `.ply`, `.pcd`, `.las`.
+Obslugiwane formaty: `.vtp` (appended/raw, bez kompresji), `.vtk` (legacy, ASCII i BINARY),
+`.csv`, `.xyz`, `.ply` (ascii/binary), `.pcd` (ascii/binary/binary_compressed), `.las` 1.0-1.4
+(formaty 0-10, bez LAZ). Wariant nieobslugiwany konczy sie komunikatem o bledzie.
 
-Czytniki znajduja sie w `LidarViewer.Core/Readers`. Kazdy z nich zwraca ten sam model
-`PointCloud`, wiec wszystkie formaty traktuja sie identycznie w dalszej obrabce.
+Czytniki znajduja sie w `LidarViewer.Core/Readers` (VTP w `Core/Vtp`), a `PointCloudLoader`
+wybiera czytnik po rozszerzeniu i usuwa punkty NaN/Inf. Kazdy czytnik zwraca ten sam model
+`PointCloud`.
 
 ### Atrybuty punktow
 
-Kazdy punkt moze niech z pliku zostac zapisany w chmurze:
+Oprocz pozycji `PointCloud` moze niesc:
 
-- `intensity` - intensywnosc odbicia odczytana z pliku (`.ply`, `.las`); plikow bez
-  intensywnosci nie da sie kolorowac w trybie `Intensity`
-- `distance` - odleglosc punktu od poczatku ukladu, liczona w podwojnej precyzji
-- `height` - wysokosc jako wspolrzedna swiatowa (`z` + `Origin.Z`)
+- `intensity`, `category` - z pliku
+- `LaserId`, `Azimuth`, `Time` - z dekodera Velodyne
+- `distance` - odleglosc od czujnika, `height` - wysokosc swiatowa (liczone na zadanie)
 
-Atrybuty `distance` i `height` liczone sa na zadanie i cache`owane, wiec sa zawsze
-dostepne niezaleznie od formatu pliku.
+`Origin` (double) to przesuniecie ukladu (LAS). Pozycje w buforze GPU sa liczone wzgledem
+srodka chmury.
 
 ### Kolorowanie
 
-Tryby koloru: `Solid`, `Intensity`, `Distance`.
+Tryby koloru: `Solid` (domyslnie szary), `Intensity`, `Distance`, `Height`, `LaserId`,
+`Azimuth`, `Time`.
 
 Mapy kolorow: `Grayscale`, `Viridis`, `Turbo`, `Jet`.
 
-Zakres mapowania moze byc ustalony automatycznie z chmury albo recznie (pole minimum
-i maksimum). Reczny zakres jest zapamietywany i nie jest nadpisywany przez tryb auto.
-Legenda z gradientem i podpisanym zakresem jest widoczna w rogu widoku.
+Zakres mapowania moze byc ustalony automatycznie albo recznie; legenda z gradientem jest
+widoczna w rogu widoku. Rozmiar punktu reguluje suwak.
 
 ### Filtry
 
 Filtry sa uporzadkowane w potoku. Kazdy etap pokazuje liczbe punktow na wejsciu
-i wyjsciu, a kolejnosc etapow mozna zmieniac przyciskami `▲` / `▼`.
+i wyjsciu, a kolejnosc etapow mozna zmieniac. Filtry dzialaja takze w trybie na zywo.
 
-Dostepne filtry:
-
-- Zakres skalara - wycina punkty poza zakresem wybranego atrybutu
-- Przyciecie prostopadloscianem
-- Przyciecie kula
-- Siatka voxelowa - redukuje chmure do jednego punktu na voxel
-- Usuwanie odosobionych - filtr statystyczny (sasiedzi + prog odchylenia)
-- Usuwanie ziemi - metoda RANSAC z iteracyjnym dopasowaniem plaszczyzny
-
-Filtry dzialaja tylko na wczytanym pliku - w trybie live sa wylaczone.
+- Zakres skalara (np. po `LaserId`)
+- Przyciecie prostopadloscianem i kula
+- Siatka voxelowa
+- Usuwanie odosobionych (filtr statystyczny)
+- Usuwanie ziemi (RANSAC)
 
 ### Widok 2D i 3D
 
-Widok 2D rasteryzuje chmure do bitmapy w plaszczyznie XY, XZ albo YZ (kolor per punkt).
+Widok 3D rysuje punkty w OpenGL (Silk.NET) z kamera orbitalna, siatka kolowa i osiami
+(rysowanymi na wierzchu siatki). Widok 2D rzutuje chmure na plaszczyzne XY, XZ albo YZ.
+Przelaczanie klawiszami `2` i `3`.
 
-Widok 3D rysuje punkty w OpenGL (Silk.NET) z kamera orbitalna. Przełączanie widoku
-przyciskami `2` i `3`.
+### Pomiar i tabela punktow
 
-### Sekwencje chmur punktow
+- **Pomiar odleglosci**: dwa klikniete punkty (najblizszy punkt w pikselach), odcinek i krzyzyki
+  w widoku 3D.
+- **Tabela punktow**: zwirtualizowana lista punktow z atrybutami (przycisk `Tabela punktow`).
 
-Sekwencja to katalog z plikami klatek i manifestem `sequence.json`:
+### Sekwencje i nagrania pcap
+
+Odtwarzac mozna:
+
+- **nagranie `.pcap` / `.pcapng`** z Velodyne (pakiety UDP 1206 B): klatki wyznaczane sa wg
+  obrotow czujnika (przejscie azymutu przez 360 stopni), indeks budowany jest raz, a klatki
+  dekodowane leniwie i trzymane w cache (`PcapFrameSource`); bez plikow posrednich,
+- **katalog sekwencji**: pliki klatek (dowolny obslugiwany format) plus manifest
+  `sequence.json`:
 
 ```json
 {
@@ -99,89 +125,101 @@ Sekwencja to katalog z plikami klatek i manifestem `sequence.json`:
 }
 ```
 
-Nagranie sieciowe z Velodyne VLP-16 (`.pcap` lub `.pcapng`, pakiety danych UDP 1206 B) mozna
-otworzyc wprost przyciskiem wyboru pliku: aplikacja dzieli je na klatki (jeden obrot czujnika =
-jedna klatka), zapisuje jako sekwencje w katalogu tymczasowym i odtwarza jak kazda inna.
+Brak `Timestamp` oznacza 0,1 s na klatke. Format katalogu z manifestem jest wewnetrzny
+dla tej aplikacji; lidary zapisuja strumien jako pcap.
 
-Nagrywanie w trybie live z protokolem Velodyne zapisuje surowe pakiety do jednego pliku `.pcap`
-(da sie go otworzyc w aplikacji, Wireshark i VeloView); protokol wlasny zapisuje klatki PLY.
+Odtwarzacz ma: Play/Pauza, suwak, krok klatka po klatce (←/→), skok do pierwszej i ostatniej
+klatki (Home/End), zakres klatek, tempo od 0.1x, petle oraz "slad" (doklejanie do 10
+poprzednich klatek).
 
-Pasek odtwarzania ma tez krok klatka po klatce (←/→), skok do pierwszej i ostatniej klatki (Home/End),
-wybor zakresu klatek, tempo od 0.1x oraz "slad" - doklejanie do 10 poprzednich klatek do widoku.
+### Tryb na zywo (UDP)
 
-Manifest opisuje klatki na osi czasu, wiec sekwencja odtwarza sie jak film: przyciski
-odtwarzania, przewijanie, wybor tempa i pętla.
+Odbiornik UDP nasluchuje na wybranym porcie. Protokoly:
 
-### Tryb live po UDP
+- **Velodyne (kalibracja)** - natywne pakiety czujnika, port domyslnie 2368. Modele
+  wbudowane: VLP-16 i HDL-32E; inne (VLP-32, HDL-64E) po wczytaniu pliku kalibracji `db.xml`
+  (przycisk `Kalibracja...`). Strumien dzielony jest na obroty i pokazywany jest ostatni pelny
+  obrot, jak w VeloView.
+- **Protokol wlasny LVLR** - naglowek 10 B (`LVLR`, wersja, flagi, liczba punktow), potem 13 B
+  na punkt (`x`, `y`, `z` float32 LE plus 1 B intensywnosci); bufor kumuluje punkty.
 
-Odbiorca UDP nasluchuje na wybranym porcie i przekazuje chmury do widoku. Obslugiwane
-sa dwa formaty pakietow:
+Checkbox `Symulator` w panelu bocznym uruchamia wbudowany symulator. Jesli w drzewie katalogow
+nad aplikacja znajdzie sie przykladowe nagranie `lidar-samples/VLP-16 Sample Data/2015-07-23-14-37-22_Velodyne-VLP-16-Data_Downtown 10Hz Single.pcap`,
+symulator odtwarza je w petli, w oryginalnym tempie, jako pakiety Velodyne VLP-16 (aplikacja sama
+ustawia protokol i czujnik). Bez tego pliku wysyla scene syntetyczna w protokole LVLR. Awarie gniazda UDP sa zglaszane
+w interfejsie, a ostatnia porcja danych jest publikowana nawet przy zakonczeniu strumienia.
 
-- **Wlasny protokul LVLR** - naglowek 10 B (magika `LVLR`, wersja, flagi, liczba punktow),
-  nastepnie 13 B na punkt (`x`, `y`, `z` jako float32 LE plus 1 B intensywnosci)
-- **Velodyne VLP-16** - natywny format danych czujnika (pakiet 1206 B, port 2368)
+#### Nadajnik testowy Velodyne
 
-Wbudowany symulator wysyla chmury w protokole LVLR, dzieki czemu tryb live da sie
-przetestowac bez sprzetu. Kamera w trybie live jest stabilna - nie skacze przy kazdej
-nowej chmurze.
+`tools/velodyne_sender.py` (sama biblioteka standardowa Pythona) symuluje czujnik VLP-16:
+
+```bash
+python3 tools/velodyne_sender.py                       # scena syntetyczna
+python3 tools/velodyne_sender.py --pcap nagranie.pcap --loop   # odtwarzanie pcap
+python3 tools/velodyne_sender.py --loss 0.05           # gubi 5% pakietow
+```
+
+W aplikacji: panel boczny → `Zrodlo na zywo` → protokol `Velodyne (kalibracja)`, VLP-16,
+port 2368 → `Start`.
 
 ### Nagrywanie
 
-Przyciski `Nagrywaj` i `Stop nagrania` pojawiaja sie w trybie live. Nagrywanie tworzy
-w wybranym katalogu podkatalog `nagranie-<data>-<godzina>/`, w ktorym zapisywane sa
-klatki `frame_00000.ply`, `frame_00001.ply`, ... oraz manifest `sequence.json`.
+Przyciski `Nagrywaj` i `Stop nagrania` pojawiaja sie w trybie na zywo.
 
-Klatki zapisywane sa w watku roboczym, wiec interfejs nie zacina. Domyslnie zapisywana
-jest jedna klatka na sekunde. Po zatrzymaniu nagrania manifest jest finalizowany i
-nagranie od razu otwiera sie przez `Sekwencja...`.
+- Protokol Velodyne: surowe pakiety zapisywane sa do jednego pliku `.pcap`
+  (Ethernet/IPv4/UDP z suma kontrolna IP), ktory otwiera sie w aplikacji, Wireshark i VeloView.
+- Protokol wlasny: klatki PLY w podkatalogu `nagranie-<data>-<godzina>/` wraz z `sequence.json`.
 
-Zamkniecie okna konczy trwajace nagranie, dzieki czemu manifest zawsze powstaje.
+Zapis idzie w watku roboczym, a zamkniecie okna konczy trwajace nagranie.
 
-### Eksport
+### Eksport i zrzuty
 
-Przycisk `Zapisz jako...` zapisuje chmure widoczna w scenie (po filtrach) we
-wspolrzednych swiatowych:
-
-- `PLY` - binarny, razem z intensywnoscia, gdy chmura ja ma
-- `XYZ` / `CSV` - tekstowy, `x,y,z` albo `x,y,z,intensity`
+`Zapisz jako...` zapisuje chmure widoczna w scenie (po filtrach) jako `PLY`, `PCD` (binary),
+`LAS` (1.2, format 0) albo `CSV`/`XYZ`. Zrzut widoku do `PNG` robi przycisk aparatu
+(w 3D odczyt bufora ramki, w 2D `RenderTargetBitmap`).
 
 ### Skroty klawiszowe
 
 | Klawisz | Dzialanie |
 |---|---|
 | `R` | reset widoku |
-| `2` | widok 2D |
-| `3` | widok 3D |
+| `2` / `3` | widok 2D / 3D |
 | `Spacja` | odtwarzanie / pauza |
+| `←` / `→` | klatka wstecz / do przodu |
+| `Home` / `End` | pierwsza / ostatnia klatka |
 
-Skroty nie dzialaja, gdy fokus jest w polu tekstowym, combo boxie, checkboxie,
-slidere lub przycisku.
+Skroty nie dzialaja, gdy fokus jest w polu tekstowym, combo boxie, checkboxie lub slidere.
 
 ## Struktura projektu
 
 ```
 src/LidarViewer.Core/          logika, bez zaleznosci od UI
-  Models/                      PointCloud, atrybuty punktow, plaszczyzny
-  Readers/                     czytniki plikow
-  Export/                      zapisywanie chmur (PLY, CSV/XYZ)
-  Recording/                   nagrywanie sekwencji
-  Filters/                     filtry i pipeline
-  Rendering/                   kolory, mapy kolorow, kamera orbitalna
-  Spatial/                     kd-tree, dopasowanie plaszczyzny
-  Streaming/                   odbiorca UDP i dekodery pakietow
+  Models/                      PointCloud, PointTable, atrybuty, plaszczyzny rzutu
+  Readers/                     czytniki plikow (CSV, PLY, PCD, LAS, VTK)
   Vtp/                         czytnik VTP
-  Playback/                    model sekwencji i odtwarzacz
+  Export/                      zapis chmur (PLY, PCD, LAS, CSV/XYZ)
+  Recording/                   nagrywanie sekwencji klatek
+  Filters/                     filtry i pipeline
+  Rendering/                   kolory, mapy kolorow, kamera orbitalna, siatka i osie,
+                               kostka orientacji, wybieranie punktu
+  Spatial/                     kd-tree, dopasowanie plaszczyzny
+  Streaming/                   odbiornik UDP, dekodery Velodyne, kalibracja, czytnik
+                               i zapis pcap, bufor live, miernik pakietow
+  Playback/                    sekwencje, zrodla klatek (katalog, pcap), odtwarzacz, cache
 
-src/LidarViewer.App/           warstwa aplikacji
+src/LidarViewer.App/           warstwa aplikacji (Avalonia)
   Views/MainWindow.axaml       okno glowne
-  ViewModels/                  model widoku, pipeline, edytory filtrow
-  Controls/                    widok 2D, widok 3D, legenda kolorow
+  ViewModels/                  MainViewModel (partial: Playback, Live, Recording),
+                               pipeline, edytory filtrow
+  Controls/                    widok 3D (OpenGL), widok 2D, legenda, kostka orientacji
   Streaming/                   symulator strumienia
   Converters/                  konwertery wartosci dla XAML
 
-tests/LidarViewer.Core.Tests/       testy logiki
-tests/LidarViewer.App.Tests/        testy modelu widoku
-tests/LidarViewer.App.Headless.Tests/   testy rozlozenia okna (Avalonia.Headless)
+tools/velodyne_sender.py       nadajnik pakietow Velodyne VLP-16 do testow live
+
+tests/LidarViewer.Core.Tests/             testy logiki
+tests/LidarViewer.App.Tests/              testy modelu widoku
+tests/LidarViewer.App.Headless.Tests/     testy okna (Avalonia.Headless)
 ```
 
 `LidarViewer.Core` nie wie nic o Avalonii - cala logika jest testowalna bez uruchamiania
@@ -190,6 +228,6 @@ okna.
 ## Zasady kodu
 
 - Logika w `Core` bez zaleznosci od UI, warstwa aplikacji tylko podpina ja do widoku
-- Testy pisane najpierw (TDD), minimum 80% pokrycia
+- Testy pisane najpierw (TDD)
 - Male, wysoko spojne pliki
-- Polskie komentarze w kodzie bez znakow diakrytycznych (tecz w komunikatach git)
+- Komentarze i komunikaty dla uzytkownika po polsku, nazwy w kodzie po angielsku
