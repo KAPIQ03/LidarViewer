@@ -22,9 +22,18 @@ public sealed class LiveCloudBuffer
     private bool _hasLaserId, _hasAzimuth, _hasTime;
     private int _writeIndex;
     private int _count;
+    private readonly bool _byRevolution;
+    private float _lastAzimuth = float.NaN;
+    private PointCloud? _completed;
 
-    public LiveCloudBuffer(int capacity)
+    /// <param name="capacity">Pojemnosc w punktach.</param>
+    /// <param name="byRevolution">
+    /// Dziel strumien na obroty czujnika (po azymucie): migawka to ostatni pelny obrot, a nie
+    /// kilka nalozonych na siebie. Wymaga atrybutu Azimuth w chmurach (dekoder Velodyne).
+    /// </param>
+    public LiveCloudBuffer(int capacity, bool byRevolution = false)
     {
+        _byRevolution = byRevolution;
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
 
         _positions = new float[capacity * 3];
@@ -42,10 +51,49 @@ public sealed class LiveCloudBuffer
     {
         ArgumentNullException.ThrowIfNull(cloud);
 
+        if (_byRevolution && cloud.Azimuth is { Length: > 0 } azimuths)
+        {
+            // Azymut spadajacy o ponad pol obrotu to przejscie przez 360 stopni = poczatek nowego obrotu.
+            int start = 0;
+            float previous = _lastAzimuth;
+            for (int i = 0; i < azimuths.Length; i++)
+            {
+                if (!float.IsNaN(previous) && previous - azimuths[i] > 180f)
+                {
+                    AddRange(cloud, start, i);
+                    CompleteRevolution();
+                    start = i;
+                }
+
+                previous = azimuths[i];
+            }
+
+            AddRange(cloud, start, cloud.Count);
+            _lastAzimuth = previous;
+            return;
+        }
+
+        AddRange(cloud, 0, cloud.Count);
+    }
+
+    private void CompleteRevolution()
+    {
+        if (_count > 0)
+            _completed = SnapshotCurrent();
+
+        _writeIndex = 0;
+        _count = 0;
+    }
+
+    private void AddRange(PointCloud cloud, int from, int to)
+    {
+        if (to <= from)
+            return;
+
         // Przy pelnym buforze zostawiamy tylko najnowsze punkty dodawanej
         // chmury - starsze i tak zostalyby zaraz skasowane.
-        int skip = Math.Max(0, cloud.Count - Capacity);
-        int take = cloud.Count - skip;
+        int skip = from + Math.Max(0, (to - from) - Capacity);
+        int take = to - skip;
 
         _hasLaserId |= cloud.LaserId is not null;
         _hasAzimuth |= cloud.Azimuth is not null;
@@ -69,7 +117,12 @@ public sealed class LiveCloudBuffer
         }
     }
 
-    public PointCloud Snapshot()
+    /// <summary>
+    /// Migawka. W trybie obrotow: ostatni pelny obrot (do czasu pierwszego pelnego obrotu - to, co juz jest).
+    /// </summary>
+    public PointCloud Snapshot() => _byRevolution && _completed is not null ? _completed : SnapshotCurrent();
+
+    private PointCloud SnapshotCurrent()
     {
         var positions = new float[_count * 3];
         var intensity = new byte[_count];
@@ -102,6 +155,8 @@ public sealed class LiveCloudBuffer
     {
         _writeIndex = 0;
         _count = 0;
+        _completed = null;
+        _lastAzimuth = float.NaN;
         _hasLaserId = _hasAzimuth = _hasTime = false;
     }
 }

@@ -28,14 +28,14 @@ public sealed class UdpCloudReceiver : IDisposable
     private bool _dirty;
     private bool _flushScheduled;
 
-    public UdpCloudReceiver(int port, IPacketDecoder decoder, int capacity)
+    public UdpCloudReceiver(int port, IPacketDecoder decoder, int capacity, bool byRevolution = false)
     {
         ArgumentNullException.ThrowIfNull(decoder);
         ArgumentOutOfRangeException.ThrowIfNegative(port);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
 
         _decoder = decoder;
-        Buffer = new LiveCloudBuffer(capacity);
+        Buffer = new LiveCloudBuffer(capacity, byRevolution);
         _client = new UdpClient(new IPEndPoint(IPAddress.Any, port));
 
         // Domyslny bufor odbioru jest za maly na wieksze datagramy - pakiet

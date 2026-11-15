@@ -109,7 +109,8 @@ public partial class MainViewModel
                 _ => new SimpleCloudDecoder(),
             };
 
-            var receiver = new UdpCloudReceiver(LivePort, decoder, LiveBufferCapacity);
+            var receiver = new UdpCloudReceiver(LivePort, decoder, LiveBufferCapacity,
+                byRevolution: LiveProtocol == LiveProtocol.VelodyneVlp16);
             receiver.CloudUpdated += ReceiveLiveCloud;
             receiver.Faulted += ReceiveLiveFault;
             receiver.PacketReceived += RecordRawPacket;
