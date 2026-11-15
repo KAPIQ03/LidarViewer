@@ -78,6 +78,31 @@ public class UdpCloudReceiverTests
         Assert.Equal(0, receiver.PacketCount);
     }
 
+    [Fact]
+    public async Task LastPacketsAreFlushedAfterThrottleWindow()
+    {
+        using var receiver = new UdpCloudReceiver(0, new SimpleCloudDecoder(), 100);
+        var allPoints = new TaskCompletionSource<bool>();
+        receiver.CloudUpdated += cloud =>
+        {
+            if (cloud.Count == 7)
+                allPoints.TrySetResult(true);
+        };
+        receiver.Start();
+
+        // Drugi pakiet trafia w okno ograniczenia 10 Hz - bez odlozonej aktualizacji
+        // widok zostalby na 3 punktach az do nastepnego pakietu.
+        using var sender = new UdpClient();
+        var endpoint = new IPEndPoint(IPAddress.Loopback, receiver.Port);
+        await sender.SendAsync(Packet(3), endpoint);
+        await Task.Delay(20);
+        await sender.SendAsync(Packet(4), endpoint);
+
+        Task completed = await Task.WhenAny(allPoints.Task, Task.Delay(Timeout));
+
+        Assert.Same(allPoints.Task, completed);
+    }
+
     private static async Task<PointCloudEvent?> WaitForCloud(UdpCloudReceiver receiver)
     {
         var completion = new TaskCompletionSource<PointCloudEvent>();

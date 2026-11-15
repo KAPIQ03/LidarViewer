@@ -131,6 +131,7 @@ public partial class MainWindow : Window
         {
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
             _vm.LiveCloudUpdated -= OnLiveCloudUpdated;
+            _vm.LiveFaulted -= OnLiveFaulted;
         }
 
         if (DataContext is not MainViewModel vm)
@@ -142,10 +143,14 @@ public partial class MainWindow : Window
         _vm = vm;
         vm.PropertyChanged += OnViewModelPropertyChanged;
         vm.LiveCloudUpdated += OnLiveCloudUpdated;
+        vm.LiveFaulted += OnLiveFaulted;
     }
 
     // Chmura przychodzi z watku odbioru UDP, wiec trzeba ja przeniesc na
     // watek interfejsu - wlasniki widoku nie wolno zmieniac z innego watku.
+    private void OnLiveFaulted(string message) =>
+        Dispatcher.UIThread.Post(() => _vm?.ApplyLiveFault(message));
+
     private void OnLiveCloudUpdated(PointCloud cloud) =>
         Dispatcher.UIThread.Post(() => _vm?.ApplyLiveCloud(cloud));
 

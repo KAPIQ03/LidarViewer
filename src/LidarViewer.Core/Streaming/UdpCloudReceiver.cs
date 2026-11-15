@@ -20,7 +20,11 @@ public sealed class UdpCloudReceiver : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private long _packetCount;
     private long _rejectedCount;
+    private readonly object _gate = new();
+    private readonly Timer _flushTimer;
     private DateTime _nextUpdate = DateTime.MinValue;
+    private bool _dirty;
+    private bool _flushScheduled;
 
     public UdpCloudReceiver(int port, IPacketDecoder decoder, int capacity)
     {
@@ -36,6 +40,7 @@ public sealed class UdpCloudReceiver : IDisposable
         // zostalby urwany albo odrzucony.
         _client.Client.ReceiveBufferSize = 1 << 20;
         Port = ((IPEndPoint)_client.Client.LocalEndPoint!).Port;
+        _flushTimer = new Timer(_ => Flush(), null, Timeout.Infinite, Timeout.Infinite);
     }
 
     /// <summary>
@@ -56,6 +61,13 @@ public sealed class UdpCloudReceiver : IDisposable
     /// Nowa chmura z bufora. Wywolywane z watku odbioru.
     /// </summary>
     public event Action<PointCloud>? CloudUpdated;
+
+    /// <summary>
+    /// Odbior przerwany nieodwracalnym bledem gniazda. Wywolywane z watku odbioru;
+    /// po tym zdarzeniu IsRunning jest false. Chwilowe bledy (np. ICMP "port
+    /// unreachable") sa pomijane i odbior trwa dalej.
+    /// </summary>
+    public event Action<Exception>? Faulted;
 
     public void Start()
     {
@@ -93,8 +105,18 @@ public sealed class UdpCloudReceiver : IDisposable
             {
                 return;
             }
-            catch (SocketException)
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
             {
+                // Windows zglasza tak ICMP z poprzedniego datagramu - gniazdo dziala dalej.
+                continue;
+            }
+            catch (SocketException ex)
+            {
+                if (token.IsCancellationRequested)
+                    return;
+
+                IsRunning = false;
+                Faulted?.Invoke(ex);
                 return;
             }
 
@@ -105,24 +127,59 @@ public sealed class UdpCloudReceiver : IDisposable
             }
 
             Interlocked.Increment(ref _packetCount);
-            Buffer.Add(cloud);
+            lock (_gate)
+                Buffer.Add(cloud);
             Publish();
         }
     }
 
     private void Publish()
     {
-        DateTime now = DateTime.UtcNow;
-        if (now < _nextUpdate)
-            return;
+        PointCloud snapshot;
+        lock (_gate)
+        {
+            DateTime now = DateTime.UtcNow;
+            if (now < _nextUpdate)
+            {
+                // Zbyt wczesnie - ostatnia porcja nie moze zginac, wiec zaplanuj odlozona aktualizacje.
+                _dirty = true;
+                if (!_flushScheduled)
+                {
+                    _flushScheduled = true;
+                    _flushTimer.Change(_nextUpdate - now, Timeout.InfiniteTimeSpan);
+                }
+                return;
+            }
 
-        _nextUpdate = now + UpdateInterval;
-        CloudUpdated?.Invoke(Buffer.Snapshot());
+            _nextUpdate = now + UpdateInterval;
+            _dirty = false;
+            snapshot = Buffer.Snapshot();
+        }
+
+        CloudUpdated?.Invoke(snapshot);
+    }
+
+    private void Flush()
+    {
+        PointCloud snapshot;
+        lock (_gate)
+        {
+            _flushScheduled = false;
+            if (!_dirty || !IsRunning)
+                return;
+
+            _nextUpdate = DateTime.UtcNow + UpdateInterval;
+            _dirty = false;
+            snapshot = Buffer.Snapshot();
+        }
+
+        CloudUpdated?.Invoke(snapshot);
     }
 
     public void Dispose()
     {
         Stop();
+        _flushTimer.Dispose();
         _cts.Dispose();
         _client.Dispose();
     }

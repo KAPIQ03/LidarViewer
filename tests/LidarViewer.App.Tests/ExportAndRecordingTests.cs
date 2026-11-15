@@ -81,7 +81,7 @@ public class ExportAndRecordingTests : IDisposable
     }
 
     [Fact]
-    public void Recording_CountsCapturedFrames()
+    public async Task Recording_CountsCapturedFrames()
     {
         var vm = new MainViewModel { RecordingIntervalSeconds = 0 };
         vm.StartRecording(Path.Combine(_dir, "nagranie"));
@@ -91,6 +91,9 @@ public class ExportAndRecordingTests : IDisposable
 
         Assert.Equal(2, vm.RecordedFrameCount);
         Assert.Contains("2", vm.RecordInfo);
+
+        // Zakoncz nagranie, zeby watek zapisu nie pisal do katalogu w trakcie jego usuwania.
+        await vm.StopRecordingAsync();
     }
 
     [Fact]

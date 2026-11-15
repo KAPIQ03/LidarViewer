@@ -9,7 +9,8 @@ namespace LidarViewer.Core.Streaming;
 /// kumuluja. Gdy bufor jest pelny, kasuje najstarsze - dzieki temu pamiec
 /// nie rosie w nieskonczonosc, a widok pokazuje ostatni obrot czujnika.
 ///
-/// Bufor nie jest bezpieczny watkowo - uzywa go tylko watek odbioru.
+/// Bufor nie jest bezpieczny watkowo. UdpCloudReceiver chroni zapis i odczyt migawki wspolna blokada;
+/// odczyt samego Count z innego watku jest bezpieczny (pojedyncza liczba calkowita).
 /// </summary>
 public sealed class LiveCloudBuffer
 {

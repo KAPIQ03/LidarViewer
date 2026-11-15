@@ -398,6 +398,9 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     public event Action<PointCloud>? LiveCloudUpdated;
 
+    /// <summary>Blad odbioru UDP. Wolane z watku odbioru - okno przenosi je na watek interfejsu.</summary>
+    public event Action<string>? LiveFaulted;
+
     public MainViewModel()
     {
         Pipeline.PropertyChanged += OnPipelinePropertyChanged;
@@ -767,6 +770,7 @@ public partial class MainViewModel : ViewModelBase
 
             var receiver = new UdpCloudReceiver(LivePort, decoder, LiveBufferCapacity);
             receiver.CloudUpdated += ReceiveLiveCloud;
+            receiver.Faulted += ReceiveLiveFault;
             receiver.Start();
 
             _receiver = receiver;
@@ -785,6 +789,7 @@ public partial class MainViewModel : ViewModelBase
             return;
 
         _receiver.CloudUpdated -= ReceiveLiveCloud;
+        _receiver.Faulted -= ReceiveLiveFault;
         _receiver.Dispose();
         _receiver = null;
         IsLive = false;
@@ -807,6 +812,17 @@ public partial class MainViewModel : ViewModelBase
         // dociera do odbioru niezaleznie od tego, czy okno jest otwarte.
         RecordLiveFrame(cloud);
         LiveCloudUpdated?.Invoke(cloud);
+    }
+
+    private void ReceiveLiveFault(Exception ex) => LiveFaulted?.Invoke(ex.Message);
+
+    /// <summary>
+    /// Konczy tryb live po bledzie odbioru. Wolane z watku interfejsu.
+    /// </summary>
+    public void ApplyLiveFault(string message)
+    {
+        StopLiveCore();
+        Status = $"Błąd odbioru UDP: {message}";
     }
 
     /// <summary>
@@ -872,6 +888,7 @@ public partial class MainViewModel : ViewModelBase
             return;
 
         _receiver.CloudUpdated -= ReceiveLiveCloud;
+        _receiver.Faulted -= ReceiveLiveFault;
         _receiver.Dispose();
         _receiver = null;
 
