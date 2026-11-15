@@ -477,7 +477,9 @@ public sealed class PointCloudView3D : OpenGlControlBase
     /// </summary>
     private unsafe void UploadGuides(GL gl, PointCloud cloud)
     {
-        var guides = SceneGuides.Build(SensorPosition(cloud), cloud.Radius);
+        Vector3 sensorPosition = SensorPosition(cloud);
+        var guides = SceneGuides.Build(sensorPosition, cloud.Radius);
+        Report($"Osie: czujnik w ({sensorPosition.X:F1}; {sensorPosition.Y:F1}; {sensorPosition.Z:F1}), Origin chmury ({cloud.Origin.X:F1}; {cloud.Origin.Y:F1}; {cloud.Origin.Z:F1}), {(SensorLocator.Locate(cloud) is null ? "poczatek ukladu poza chmura - osie w jej srodku" : "osie w poczatku ukladu")}.");
         _guidesDirty = false;
 
         // Pomiar: krzyzyk na kazdym wybranym punkcie i odcinek miedzy nimi (zolte).

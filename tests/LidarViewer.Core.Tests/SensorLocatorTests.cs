@@ -41,4 +41,25 @@ public class SensorLocatorTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public void LasRoundTripKeepsPointsRelativeToSensor()
+    {
+        // Chmura niesymetryczna wzgledem czujnika (jak realne nagranie z jedna sciana).
+        float[] original = [2f, 3f, 1f, 30f, 40f, 2f, -1f, 25f, 0.5f, 15f, -2f, 3f];
+        string path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".las");
+        try
+        {
+            LasWriter.Write(path, new PointCloud(original));
+            PointCloud loaded = PointCloudLoader.Read(path);
+
+            Vector3 sensor = SensorLocator.Locate(loaded)!.Value;
+            for (int i = 0; i < original.Length; i++)
+                Assert.Equal(original[i], loaded.Positions[i] - sensor[i % 3], 2);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }
