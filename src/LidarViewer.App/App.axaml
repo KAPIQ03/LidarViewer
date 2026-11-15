@@ -10,24 +10,28 @@
     </Application.DataTemplates>
 
     <Application.Resources>
-        <Color x:Key="AppBg">#16181C</Color>
-        <Color x:Key="PanelBg">#1E2127</Color>
-        <Color x:Key="PanelBg2">#252931</Color>
-        <Color x:Key="Hairline">#2F343D</Color>
-        <Color x:Key="AccentColor">#4C8DFF</Color>
+        <Color x:Key="AppBg">#00100B</Color>
+        <Color x:Key="PanelBg">#061C14</Color>
+        <Color x:Key="PanelBg2">#0C271D</Color>
+        <Color x:Key="Hairline">#1B3A2D</Color>
+        <Color x:Key="AccentColor">#E3B23C</Color>
         <SolidColorBrush x:Key="AppBgBrush" Color="{StaticResource AppBg}" />
         <SolidColorBrush x:Key="PanelBgBrush" Color="{StaticResource PanelBg}" />
         <SolidColorBrush x:Key="PanelBg2Brush" Color="{StaticResource PanelBg2}" />
         <SolidColorBrush x:Key="HairlineBrush" Color="{StaticResource Hairline}" />
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#8B93A1" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#9C9A87" />
         <SolidColorBrush x:Key="WarnBrush" Color="#F5C66B" />
     </Application.Resources>
 
     <Application.Styles>
         <FluentTheme>
             <FluentTheme.Palettes>
-                <ColorPaletteResources x:Key="Dark" Accent="#4C8DFF" RegionColor="#16181C"
+                <ColorPaletteResources x:Key="Dark" Accent="#E3B23C" RegionColor="#00100B"
+                                       BaseHigh="#EDEBD7" BaseMediumHigh="#CFCDB9" BaseMedium="#9C9A87" BaseMediumLow="#6B6A5B"
+                                       BaseLow="#24392F" ChromeLow="#061C14" ChromeMediumLow="#0A241A" ChromeMedium="#0C271D"
+                                       ChromeHigh="#1B3A2D" ChromeAltLow="#CFCDB9" ChromeDisabledLow="#6B6A5B"
+                                       ChromeDisabledHigh="#24392F" ListLow="#143025" ListMedium="#1B3A2D"
                                        ErrorText="#FF6B6B" />
             </FluentTheme.Palettes>
         </FluentTheme>
@@ -47,13 +51,13 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
         <Style Selector="Button.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#2C313A" />
+            <Setter Property="Background" Value="#143025" />
         </Style>
         <Style Selector="ToggleButton.tool:checked /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#2B4A80" />
+            <Setter Property="Background" Value="#4A3D17" />
         </Style>
         <Style Selector="ToggleButton.tool:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#34589A" />
+            <Setter Property="Background" Value="#5C4B1C" />
         </Style>
         <Style Selector="Button.tool:disabled">
             <Setter Property="Opacity" Value="0.35" />
@@ -64,28 +68,28 @@
             <Setter Property="Padding" Value="12,6" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="CornerRadius" Value="0" />
-            <Setter Property="Background" Value="#252931" />
+            <Setter Property="Background" Value="#0C271D" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Focusable" Value="False" />
         </Style>
         <Style Selector="ToggleButton.seg:checked /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#4C8DFF" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#E3B23C" />
+            <Setter Property="Foreground" Value="#00100B" />
         </Style>
         <Style Selector="ToggleButton.seg:pointerover:not(:checked) /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#2F343D" />
+            <Setter Property="Background" Value="#143025" />
         </Style>
 
         <!-- Zwykle przyciski akcji -->
         <Style Selector="Button.accent">
-            <Setter Property="Background" Value="#4C8DFF" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#E3B23C" />
+            <Setter Property="Foreground" Value="#00100B" />
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="Padding" Value="12,6" />
         </Style>
         <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#6AA0FF" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#F0C65E" />
+            <Setter Property="Foreground" Value="#00100B" />
         </Style>
         <Style Selector="Button.soft">
             <Setter Property="CornerRadius" Value="6" />
@@ -98,7 +102,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
         </Style>
         <Style Selector="Border.overlay">
-            <Setter Property="Background" Value="#CC16181C" />
+            <Setter Property="Background" Value="#CC00100B" />
             <Setter Property="CornerRadius" Value="10" />
             <Setter Property="BorderBrush" Value="#33FFFFFF" />
             <Setter Property="BorderThickness" Value="1" />
