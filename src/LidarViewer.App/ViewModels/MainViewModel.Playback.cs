@@ -244,6 +244,18 @@ public partial class MainViewModel
             PositionSeconds = Player.PositionSeconds;
     }
 
+    /// <summary>
+    /// Przesuniecie suwaka przez uzytkownika (takze strzalkami) przewija sekwencje od razu.
+    /// Zmiany pochodzace z odtwarzacza maja te sama wartosc co jego pozycja, wiec sa pomijane.
+    /// </summary>
+    partial void OnPositionSecondsChanged(double value)
+    {
+        if (Player is null || Math.Abs(value - Player.PositionSeconds) < 1e-9)
+            return;
+
+        Seek(value);
+    }
+
     public void Seek(double seconds)
     {
         if (Player is null)

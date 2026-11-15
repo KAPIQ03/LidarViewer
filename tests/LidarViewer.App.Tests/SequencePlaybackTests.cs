@@ -186,4 +186,31 @@ public class SequencePlaybackTests : IDisposable
         Assert.True(afterLoad > before);
         Assert.Equal(afterLoad, vm.FitVersion);
     }
+
+    [Fact]
+    public void ChangingPositionBySliderSeeksSequence()
+    {
+        WriteSequence();
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+
+        vm.PositionSeconds = 0.2;
+
+        Assert.Equal(0.2, vm.Player!.PositionSeconds, 6);
+        Assert.Equal("Klatka 3 / 3", vm.FrameInfo);
+    }
+
+    [Fact]
+    public void PlayerAdvanceDoesNotTriggerExtraSeek()
+    {
+        WriteSequence();
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+        vm.PlayPauseCommand.Execute(null);
+
+        vm.Advance(TimeSpan.FromSeconds(0.15));
+
+        Assert.Equal(0.15, vm.PositionSeconds, 6);
+        Assert.Equal("Klatka 2 / 3", vm.FrameInfo);
+    }
 }

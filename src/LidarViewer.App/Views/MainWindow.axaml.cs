@@ -22,6 +22,14 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        // Slider sam obsluguje wskaznik i oznacza zdarzenia jako obsluzone, wiec zwykle
+        // atrybuty XAML nigdy nie dostawaly PointerPressed/Released. Tunel + handledEventsToo
+        // lapie poczatek i koniec przeciagania.
+        SeekSlider.AddHandler(PointerPressedEvent, OnScrubStart, RoutingStrategies.Tunnel, handledEventsToo: true);
+        SeekSlider.AddHandler(PointerReleasedEvent, OnScrubEnd, RoutingStrategies.Bubble | RoutingStrategies.Tunnel, handledEventsToo: true);
+        SeekSlider.AddHandler(PointerCaptureLostEvent, OnScrubEnd, RoutingStrategies.Bubble | RoutingStrategies.Tunnel, handledEventsToo: true);
+
         _timer.Tick += OnTick;
         DataContextChanged += OnDataContextChanged;
         Closed += OnClosed;
@@ -116,13 +124,10 @@ public partial class MainWindow : Window
             vm.IsScrubbing = true;
     }
 
-    private void OnScrubEnd(object? sender, PointerReleasedEventArgs e)
+    private void OnScrubEnd(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not MainViewModel vm) return;
-
-        vm.IsScrubbing = false;
-        if (sender is Slider slider)
-            vm.Seek(slider.Value);
+        if (DataContext is MainViewModel vm)
+            vm.IsScrubbing = false;
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
