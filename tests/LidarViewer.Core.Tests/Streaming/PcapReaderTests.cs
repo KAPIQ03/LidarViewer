@@ -176,7 +176,7 @@ public class PcapReaderTests : TempDirTestBase
     }
 
     [Fact]
-    public void ImporterSplitsFramesAtAzimuthWrap()
+    public void FrameSourceSplitsFramesAtAzimuthWrap()
     {
         var records = new List<(double, byte[])>();
         double t = 100;
@@ -188,39 +188,11 @@ public class PcapReaderTests : TempDirTestBase
         records.Insert(1, (100.01, EthernetFrame(new byte[512])));
         string path = Write("g.pcap", ClassicPcap(records));
 
-        var frames = VelodynePcapImporter.ReadFrames(path).ToList();
+        var source = new PcapFrameSource(path);
 
-        Assert.Equal(2, frames.Count);
-        Assert.Equal(0, frames[0].Time, 6);
-        Assert.Equal(0.15, frames[1].Time, 6);
-        Assert.Equal(3 * 12 * 32, frames[0].Cloud.Count);
-    }
-
-    [Fact]
-    public void ImportWritesLoadableSequence()
-    {
-        var records = new List<(double, byte[])>();
-        double t = 5;
-        foreach (ushort az in new ushort[] { 0, 100, 0, 100 })
-        {
-            records.Add((t, EthernetFrame(VelodynePacket(az))));
-            t += 0.05;
-        }
-        string pcap = Write("h.pcap", ClassicPcap(records));
-        string output = Path.Combine(Dir, "seq");
-
-        var sequence = VelodynePcapImporter.Import(pcap, output, "test");
-
-        Assert.Equal("test", sequence.Name);
-        Assert.Equal(2, sequence.Frames.Count);
-        Assert.Equal(2 * 12 * 32, sequence.LoadFrame(1).Count);
-    }
-
-    [Fact]
-    public void ImportWithoutVelodynePacketsThrows()
-    {
-        string pcap = Write("i.pcap", ClassicPcap([(1, EthernetFrame([1, 2, 3]))]));
-
-        Assert.Throws<InvalidDataException>(() => VelodynePcapImporter.Import(pcap, Path.Combine(Dir, "out")));
+        Assert.Equal(2, source.FrameCount);
+        Assert.Equal(0, source.Times[0], 6);
+        Assert.Equal(0.15, source.Times[1], 6);
+        Assert.Equal(3 * 12 * 32, source.LoadFrame(0).Count);
     }
 }

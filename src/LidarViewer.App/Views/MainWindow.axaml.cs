@@ -144,19 +144,6 @@ public partial class MainWindow : Window
             vm.CalibrationPath = path;
     }
 
-    private async void OnBrowseSequenceClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not MainViewModel vm) return;
-
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "Wybierz katalog sekwencji",
-        });
-
-        if (folders.FirstOrDefault()?.TryGetLocalPath() is { } path)
-            vm.LoadSequenceCommand.Execute(path);
-    }
-
     private async void OnSaveAsClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm) return;
@@ -241,31 +228,16 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainViewModel vm) return;
 
-        if (vm.RecordsRawPackets)
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-            {
-                Title = "Zapisz nagranie pcap",
-                SuggestedFileName = $"nagranie-{DateTime.Now:yyyyMMdd-HHmmss}.pcap",
-                DefaultExtension = "pcap",
-                FileTypeChoices = [new FilePickerFileType("Nagranie pcap") { Patterns = ["*.pcap"] }],
-            });
-
-            if (file?.TryGetLocalPath() is { } pcapPath)
-                vm.StartPcapRecording(pcapPath);
-            return;
-        }
-
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "Wybierz katalog nagrania",
+            Title = "Zapisz nagranie pcap",
+            SuggestedFileName = $"nagranie-{DateTime.Now:yyyyMMdd-HHmmss}.pcap",
+            DefaultExtension = "pcap",
+            FileTypeChoices = [new FilePickerFileType("Nagranie pcap") { Patterns = ["*.pcap"] }],
         });
 
-        if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } parent)
-            return;
-
-        string target = Path.Combine(parent, $"nagranie-{DateTime.Now:yyyyMMdd-HHmmss}");
-        vm.StartRecording(target);
+        if (file?.TryGetLocalPath() is { } pcapPath)
+            vm.StartPcapRecording(pcapPath);
     }
 
     private async void OnStopRecordingClick(object? sender, RoutedEventArgs e)

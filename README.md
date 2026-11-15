@@ -15,7 +15,7 @@ Zaimplementowane na branchu `feat/lidar-toolkit`:
 | Wczytywanie plikow (VTP, VTK, CSV, PLY, PCD, LAS), widok 3D i 2D | gotowe |
 | Kolorowanie, mapy kolorow, filtry i pipeline filtrow | gotowe |
 | Interfejs w stylu VeloView (menu, pasek ikon, panel boczny, pasek stanu, kostka orientacji) | gotowe |
-| Odtwarzanie sekwencji i nagran pcap | gotowe |
+| Odtwarzanie nagran pcap | gotowe |
 | Nagrywanie (surowe pakiety do pcap, klatki PLY) | gotowe |
 | Tryb na zywo: Velodyne (VLP-16, HDL-32E, db.xml) i protokol wlasny | gotowe |
 | Eksport (PLY, PCD, LAS, CSV/XYZ), zrzut widoku do PNG | gotowe |
@@ -40,7 +40,7 @@ bo domyslny Metal nie wspolpracuje z kontrolka OpenGL. Bledy GL widac w logu dia
 ## Interfejs
 
 - **Menu**: Plik, Widok, Live, Narzedzia, Pomoc.
-- **Pasek ikon**: po lewej otwieranie plikow i sekwencji, zapis, zrzut ekranu, start i stop trybu
+- **Pasek ikon**: po lewej otwieranie plikow, zapis, zrzut ekranu, start i stop trybu
   na zywo, siatka, osie, pomiar, dopasowanie widoku. Po prawej przyciski `Tabela punktow`
   i `Panel boczny`.
 - **Panel boczny** (Expandery): Wyglad, Zrodlo na zywo, Filtry.
@@ -105,28 +105,11 @@ Przelaczanie klawiszami `2` i `3`.
   w widoku 3D.
 - **Tabela punktow**: zwirtualizowana lista punktow z atrybutami (przycisk `Tabela punktow`).
 
-### Sekwencje i nagrania pcap
+### Nagrania pcap
 
-Odtwarzac mozna:
-
-- **nagranie `.pcap` / `.pcapng`** z Velodyne (pakiety UDP 1206 B): klatki wyznaczane sa wg
+Odtwarzac mozna **nagranie `.pcap` / `.pcapng`** z Velodyne (pakiety UDP 1206 B): klatki wyznaczane sa wg
   obrotow czujnika (przejscie azymutu przez 360 stopni), indeks budowany jest raz, a klatki
-  dekodowane leniwie i trzymane w cache (`PcapFrameSource`); bez plikow posrednich,
-- **katalog sekwencji**: pliki klatek (dowolny obslugiwany format) plus manifest
-  `sequence.json`:
-
-```json
-{
-  "Name": "nagranie",
-  "Frames": [
-    { "File": "frame_00000.ply", "Timestamp": 0.0 },
-    { "File": "frame_00001.ply", "Timestamp": 1.0 }
-  ]
-}
-```
-
-Brak `Timestamp` oznacza 0,1 s na klatke. Format katalogu z manifestem jest wewnetrzny
-dla tej aplikacji; lidary zapisuja strumien jako pcap.
+  dekodowane leniwie i trzymane w cache (`PcapFrameSource`); bez plikow posrednich.
 
 Odtwarzacz ma: Play/Pauza, suwak, krok klatka po klatce (←/→), skok do pierwszej i ostatniej
 klatki (Home/End), zakres klatek, tempo od 0.1x, petle oraz "slad" (doklejanie do 10
@@ -164,11 +147,10 @@ port 2368 → `Start`.
 
 ### Nagrywanie
 
-Przyciski `Nagrywaj` i `Stop nagrania` pojawiaja sie w trybie na zywo.
+Przyciski `Nagrywaj` i `Stop nagrania` pojawiaja sie w trybie na zywo z protokolem Velodyne.
 
-- Protokol Velodyne: surowe pakiety zapisywane sa do jednego pliku `.pcap`
-  (Ethernet/IPv4/UDP z suma kontrolna IP), ktory otwiera sie w aplikacji, Wireshark i VeloView.
-- Protokol wlasny: klatki PLY w podkatalogu `nagranie-<data>-<godzina>/` wraz z `sequence.json`.
+Surowe pakiety zapisywane sa do jednego pliku `.pcap` (Ethernet/IPv4/UDP z suma kontrolna IP),
+ktory otwiera sie w aplikacji, Wireshark i VeloView.
 
 Zapis idzie w watku roboczym, a zamkniecie okna konczy trwajace nagranie.
 
@@ -198,14 +180,13 @@ src/LidarViewer.Core/          logika, bez zaleznosci od UI
   Readers/                     czytniki plikow (CSV, PLY, PCD, LAS, VTK)
   Vtp/                         czytnik VTP
   Export/                      zapis chmur (PLY, PCD, LAS, CSV/XYZ)
-  Recording/                   nagrywanie sekwencji klatek
   Filters/                     filtry i pipeline
   Rendering/                   kolory, mapy kolorow, kamera orbitalna, siatka i osie,
                                kostka orientacji, wybieranie punktu
   Spatial/                     kd-tree, dopasowanie plaszczyzny
   Streaming/                   odbiornik UDP, dekodery Velodyne, kalibracja, czytnik
                                i zapis pcap, bufor live, miernik pakietow
-  Playback/                    sekwencje, zrodla klatek (katalog, pcap), odtwarzacz, cache
+  Playback/                    zrodlo klatek (pcap), odtwarzacz, cache
 
 src/LidarViewer.App/           warstwa aplikacji (Avalonia)
   Views/MainWindow.axaml       okno glowne

@@ -10,7 +10,6 @@ using LidarViewer.Core.Export;
 using LidarViewer.Core.Models;
 using LidarViewer.Core.Playback;
 using LidarViewer.Core.Readers;
-using LidarViewer.Core.Recording;
 using LidarViewer.Core.Rendering;
 using LidarViewer.Core.Streaming;
 
@@ -134,7 +133,6 @@ public partial class MainViewModel
     {
         ArgumentNullException.ThrowIfNull(cloud);
 
-        RecordLiveFrame(cloud);
         LiveCloudUpdated?.Invoke(cloud);
     }
 
@@ -157,15 +155,6 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(LivePacketCount));
         OnPropertyChanged(nameof(LiveInfo));
         OnPropertyChanged(nameof(RecordInfo));
-    }
-
-    private void RecordLiveFrame(PointCloud cloud)
-    {
-        SequenceRecorder? recorder = _recorder;
-        if (recorder is null)
-            return;
-
-        recorder.AddFrame(cloud);
     }
 
     partial void OnSimulatorEnabledChanged(bool value)
