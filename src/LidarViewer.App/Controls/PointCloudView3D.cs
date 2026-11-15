@@ -331,7 +331,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _viewportHeight = height;
 
         gl.Viewport(0, 0, (uint)width, (uint)height);
-        gl.ClearColor(0f, 0.0627f, 0.0431f, 1f);
+        gl.ClearColor(0.031f, 0.031f, 0.031f, 1f);
         gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         if (_pointCount > 0)

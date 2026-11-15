@@ -186,8 +186,7 @@
                                 <Button Classes="tool" Command="{Binding StepBackCommand}" ToolTip.Tip="Klatka wstecz (←)">
                                     <mi:MaterialIcon Kind="ChevronLeft" Width="22" Height="22" />
                                 </Button>
-                                <Button Classes="tool" Command="{Binding PlayPauseCommand}" ToolTip.Tip="Odtwarzaj / pauza (spacja)"
-                                        Background="#4A3D17">
+                                <Button Classes="tool primary" Command="{Binding PlayPauseCommand}" ToolTip.Tip="Odtwarzaj / pauza (spacja)">
                                     <Panel>
                                         <mi:MaterialIcon Kind="Play" Width="22" Height="22" IsVisible="{Binding !IsPlaying}" />
                                         <mi:MaterialIcon Kind="Pause" Width="22" Height="22" IsVisible="{Binding IsPlaying}" />
@@ -248,7 +247,7 @@
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10"
                                 IsVisible="{Binding PointCloud, Converter={x:Static ObjectConverters.IsNull}}"
                                 IsHitTestVisible="True">
-                        <mi:MaterialIcon Kind="CubeScan" Width="72" Height="72" Foreground="#4C5A4C"
+                        <mi:MaterialIcon Kind="CubeScan" Width="72" Height="72" Foreground="#3A3A36"
                                          HorizontalAlignment="Center" />
                         <TextBlock Text="Brak danych do wyświetlenia" FontSize="18" FontWeight="SemiBold"
                                    HorizontalAlignment="Center" Foreground="#EDEBD7" />
