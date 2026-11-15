@@ -1,9 +1,5 @@
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Mierzy tempo zdarzen (np. pakietow na sekunde) w przesuwanym oknie czasu.
-/// Bezpieczny watkowo - zapis z watku odbioru, odczyt z watku interfejsu.
-/// </summary>
 public sealed class RateMeter
 {
     private readonly TimeSpan _window;
@@ -30,7 +26,6 @@ public sealed class RateMeter
 
     public void Add(long count = 1) => Add(DateTimeOffset.UtcNow, count);
 
-    /// <summary>Zdarzenia na sekunde w oknie konczacym sie w chwili <paramref name="now"/>.</summary>
     public double PerSecond(DateTimeOffset now)
     {
         lock (_gate)

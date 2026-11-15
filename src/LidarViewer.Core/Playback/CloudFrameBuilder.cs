@@ -2,10 +2,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Playback;
 
-/// <summary>
-/// Sklada chmury z kolejnych pakietow jednego obrotu czujnika, razem z atrybutami punktow.
-/// Czas punktu to przesuniecie pakietu wzgledem poczatku klatki plus czas wewnatrz pakietu.
-/// </summary>
 internal sealed class CloudFrameBuilder
 {
     private readonly List<float> _positions = [];

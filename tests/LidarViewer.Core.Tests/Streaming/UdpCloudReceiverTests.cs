@@ -90,8 +90,6 @@ public class UdpCloudReceiverTests
         };
         receiver.Start();
 
-        // Drugi pakiet trafia w okno ograniczenia 10 Hz - bez odlozonej aktualizacji
-        // widok zostalby na 3 punktach az do nastepnego pakietu.
         using var sender = new UdpClient();
         var endpoint = new IPEndPoint(IPAddress.Loopback, receiver.Port);
         await sender.SendAsync(Packet(3), endpoint);

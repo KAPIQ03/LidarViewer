@@ -10,14 +10,6 @@ using LidarViewer.Core.Streaming;
 
 namespace LidarViewer.App.Streaming;
 
-/// <summary>
-/// Symulator czujnika lidar. Bez pliku generuje chmure punktow i wysyla ja po UDP
-/// wlasnym protokolem. Z plikiem pcap odtwarza w petli pakiety Velodyne z oryginalnym
-/// tempem (jak tools/velodyne_sender.py). Pozwala sprawdzic tryb live bez sprzetu.
-///
-/// Generowany obiekt to wirujacy wiatrak 360 kolumn x 16 poziomow, ktory
-/// zmienia ksztalt w czasie - tak jak chmura z prawdziwego czujnika.
-/// </summary>
 public sealed class LiveSimulator : IDisposable
 {
     private const int Columns = 360;
@@ -37,18 +29,14 @@ public sealed class LiveSimulator : IDisposable
     private Task? _loop;
     private readonly string? _pcapPath;
 
-    /// <summary>Rozmiar ladunku pakietu danych Velodyne VLP-16.</summary>
     private const int VelodynePayloadLength = 1206;
 
-    /// <param name="pcapPath">Nagranie pcap do odtwarzania; null = scena syntetyczna (protokol wlasny).</param>
     public LiveSimulator(string host, int port, string? pcapPath = null)
     {
         _pcapPath = pcapPath;
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(port);
 
-        // Domyslny bufor wysylki w systemie jest za maly na wieksze pakiety
-        // UDP - bez tego wyslanie konczy sie bledem "Message too long".
         _client.Client.SendBufferSize = 1 << 20;
         _target = new IPEndPoint(Resolve(host), port);
     }
@@ -104,10 +92,6 @@ public sealed class LiveSimulator : IDisposable
         }
     }
 
-    /// <summary>
-    /// Wysyla w petli pakiety danych z pcap w tempie wynikajacym ze znacznikow czasu.
-    /// Plik jest czytany strumieniowo, wiec nie trzeba go miescic w pamieci.
-    /// </summary>
     private async Task RunPcapAsync(string path, CancellationToken token)
     {
         try
@@ -123,7 +107,6 @@ public sealed class LiveSimulator : IDisposable
                     if (token.IsCancellationRequested)
                         return;
 
-                    // Pakiety pozycji GPS (inny rozmiar) pomijamy - dekoder ich nie uzywa.
                     if (packet.Payload.Length != VelodynePayloadLength)
                         continue;
 
@@ -137,7 +120,6 @@ public sealed class LiveSimulator : IDisposable
                     sentAny = true;
                 }
 
-                // Plik bez pakietow danych - nie kreć sie w pustej petli.
                 if (!sentAny)
                     return;
             }
@@ -153,9 +135,6 @@ public sealed class LiveSimulator : IDisposable
         }
     }
 
-    /// <summary>
-    /// Buduje pakiety jednego obrotu wiatraka dla podanego fazy.
-    /// </summary>
     public static byte[][] BuildSweep(float phase)
     {
         var positions = new float[Columns * Elevations * 3];

@@ -5,10 +5,6 @@ using LidarViewer.Core.Filters;
 
 namespace LidarViewer.App.ViewModels;
 
-/// <summary>
-/// Pojedynczy parametr filtra w edytorze. Parametr liczbowy i wybor
-/// dziela ten sam model, ale udostepniaja rozne wlasciwosci.
-/// </summary>
 public sealed partial class FilterParameterViewModel : ObservableObject
 {
     private readonly FilterParameterSpec _spec;
@@ -42,10 +38,6 @@ public sealed partial class FilterParameterViewModel : ObservableObject
     [ObservableProperty]
     public partial int SelectedChoice { get; set; }
 
-    /// <summary>
-    /// Wartosc przekazywana do filtra - dla parametru wyboru jest to indeks
-    /// w liscie odpowiedzi, dla parametru liczbowego sama wartosc.
-    /// </summary>
     public double Value => Kind == FilterParameterKind.Choice ? SelectedChoice : Number;
 
     public void SetValue(double value)

@@ -1,8 +1,5 @@
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Korekty jednego lasera: katy w stopniach, odleglosci w metrach.
-/// </summary>
 public sealed record LaserCalibration(
     float RotationCorrection,
     float VerticalAngle,
@@ -10,17 +7,11 @@ public sealed record LaserCalibration(
     float VerticalOffset = 0f,
     float HorizontalOffset = 0f);
 
-/// <summary>
-/// Kalibracja czujnika Velodyne: korekty per laser. Liczba laserow okresla uklad pakietu
-/// (16 - VLP-16, 32 - HDL-32E/VLP-32, 64 - HDL-64E).
-/// </summary>
 public sealed class VelodyneCalibration
 {
-    // Katy pionowe VLP-16 (laser 0..15), stopnie - dokumentacja Velodyne / ros-drivers VLP16db.yaml.
     private static readonly float[] Vlp16Angles =
         [-15, 1, -13, 3, -11, 5, -9, 7, -7, 9, -5, 11, -3, 13, -1, 15];
 
-    // Katy pionowe HDL-32E (laser 0..31), stopnie - dokumentacja Velodyne HDL-32E.
     private static readonly float[] Hdl32EAngles =
     [
         -30.67f, -9.33f, -29.33f, -8.00f, -28.00f, -6.66f, -26.66f, -5.33f,

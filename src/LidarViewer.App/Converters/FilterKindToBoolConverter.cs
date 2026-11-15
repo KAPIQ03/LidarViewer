@@ -6,10 +6,6 @@ using LidarViewer.Core.Filters;
 
 namespace LidarViewer.App.Converters;
 
-/// <summary>
-/// Sprawdza, czy rodzaj parametru filtra odpowiada podanej nazwie. Uzywany
-/// do pokazywania w edytorze raz pola liczbowego, raz listy wyboru.
-/// </summary>
 public sealed class FilterKindToBoolConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)

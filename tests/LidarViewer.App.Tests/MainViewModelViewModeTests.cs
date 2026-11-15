@@ -5,9 +5,6 @@ namespace LidarViewer.App.Tests;
 
 public class MainViewModelViewModeTests
 {
-    // Przelaczenie widoku 2D/3D dziala na powiazaniu IsVisible, wiec view
-    // model musi zglosic zmiane Is2D i Is3D - inaczej widok nie przejdzie
-    // na drugi kontrolke i uzytkownik zobaczy stara chmure.
     [Fact]
     public void SwitchTo2D_RaisesIs2DAndIs3D()
     {

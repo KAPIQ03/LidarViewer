@@ -5,10 +5,6 @@ using Avalonia.Data.Converters;
 
 namespace LidarViewer.App.Converters;
 
-/// <summary>
-/// Czy wartosc enuma ma nazwe podana w parametrze. Sluzy do zaznaczania aktywnego przycisku
-/// w grupie przyciskow (np. tryb widoku 3D / 2D).
-/// </summary>
 public sealed class EnumEqualsConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>

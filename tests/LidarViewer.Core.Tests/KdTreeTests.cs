@@ -85,7 +85,6 @@ public class KdTreeTests
     [Fact]
     public void ExcludesThePointItself()
     {
-        // Pojedynczy punkt: nie ma sasiadow, suma odleglosci to zero.
         var positions = new float[] { 1f, 2f, 3f };
         var tree = new KdTree(positions, 1);
         var buffer = new double[1];

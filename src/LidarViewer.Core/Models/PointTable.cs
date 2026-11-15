@@ -3,11 +3,6 @@ using System.Globalization;
 
 namespace LidarViewer.Core.Models;
 
-/// <summary>
-/// Widok chmury jako tabela (jak "Spreadsheet View" w VeloView): wiersz na punkt, kolumny X, Y, Z oraz
-/// atrybuty, ktore chmura posiada. Wiersze sa formatowane dopiero na zadanie, wiec lista z milionami
-/// punktow nic nie kosztuje przed przewinieciem - nadaje sie jako zrodlo zwirtualizowanej listy.
-/// </summary>
 public sealed class PointTable : IReadOnlyList<string>, IList
 {
     private readonly PointCloud _cloud;
@@ -43,16 +38,10 @@ public sealed class PointTable : IReadOnlyList<string>, IList
 
     public IReadOnlyList<string> ColumnNames => _columns.Select(c => c.Name).ToArray();
 
-    /// <summary>
-    /// Naglowek wyrownany do tych samych szerokosci co wiersze (czcionka o stalej szerokosci).
-    /// </summary>
     public string Header => string.Concat(_columns.Select(c => c.Name.PadLeft(c.Width)));
 
     public int Count => _cloud.Count;
 
-    /// <summary>
-    /// Wartosci komorek wiersza jako tekst, w kolejnosci ColumnNames.
-    /// </summary>
     public string[] Cells(int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index);
@@ -90,7 +79,6 @@ public sealed class PointTable : IReadOnlyList<string>, IList
 
     private sealed record Column(string Name, int Width, Func<int, string> Format);
 
-    // --- IList (tylko do odczytu): wymagane, by lista mogla byc zrodlem wirtualizowanego ItemsControl ---
 
     bool IList.IsReadOnly => true;
 

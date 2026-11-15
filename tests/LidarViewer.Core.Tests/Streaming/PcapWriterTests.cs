@@ -26,7 +26,7 @@ public class PcapWriterTests : TempDirTestBase
     public void WrittenPacketsReadBackWithPayloadAndTime()
     {
         string path = Path.Combine(Dir, "a.pcap");
-        var time = new DateTimeOffset(2026, 11, 15, 12, 0, 0, TimeSpan.Zero).AddTicks(1234560); // 123456 us
+        var time = new DateTimeOffset(2026, 11, 15, 12, 0, 0, TimeSpan.Zero).AddTicks(1234560);
 
         using (var writer = new PcapWriter(path))
         {
@@ -54,13 +54,12 @@ public class PcapWriterTests : TempDirTestBase
         byte[] bytes = File.ReadAllBytes(path);
 
         Assert.Equal(0xA1B2C3D4u, BinaryPrimitives.ReadUInt32LittleEndian(bytes));
-        Assert.Equal(1u, BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(20))); // Ethernet
+        Assert.Equal(1u, BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(20)));
 
         int ip = 24 + 16 + 14;
         Assert.Equal(0x45, bytes[ip]);
         Assert.Equal(17, bytes[ip + 9]);
 
-        // Suma 16-bitowych slow naglowka IP razem z suma kontrolna musi dac 0xFFFF.
         uint sum = 0;
         for (int i = 0; i < 20; i += 2)
             sum += BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(ip + i));
@@ -127,7 +126,6 @@ public class PcapWriterTests : TempDirTestBase
 
         lock (received)
         {
-            // Nierozpoznany datagram tez trafia do nagrania - sluzy do zapisu pcap.
             Assert.Single(received);
             Assert.Equal([9, 9, 9], received[0]);
         }

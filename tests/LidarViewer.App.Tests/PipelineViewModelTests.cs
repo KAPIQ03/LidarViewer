@@ -6,8 +6,6 @@ namespace LidarViewer.App.Tests;
 
 public class PipelineViewModelTests
 {
-    // Dwa punkty w tym samym voxelu - filtr siatki voxelowej scala je
-    // w jeden, wiec liczba punktow w widoku mowi, czy etap zadzialal.
     private static PointCloud NearbyPoints() => new([0f, 0f, 0f, 0.05f, 0f, 0f]);
 
     [Fact]
@@ -174,8 +172,6 @@ public class PipelineViewModelTests
     [Fact]
     public void StageOrderAffectsResult()
     {
-        // Filtr statystyczny liczy srednia odleglosc wzgledem aktualnej
-        // liczby punktow, wiec kolejnosc etapow zmienia wynik.
         var cloud = new PointCloud([0f, 0f, 0f, 0f, 0f, 0.1f, 10f, 0f, 0f]);
 
         Assert.Equal(0, RunOutlierThenBox(cloud).Output?.Count);

@@ -4,12 +4,6 @@ using LidarViewer.Core.Streaming;
 
 namespace LidarViewer.Core.Playback;
 
-/// <summary>
-/// Klatki z nagrania pcap czujnika Velodyne, czytane leniwie. Konstruktor skanuje plik raz i buduje
-/// indeks (polozenie pakietow danych i granice obrotow wg przejscia azymutu przez 360 stopni);
-/// sama klatka jest dekodowana dopiero na zadanie, a kilkanascie ostatnich trzymanych w pamieci.
-/// Dzieki temu nie powstaja zadne pliki posrednie, a przewijanie jest swobodne.
-/// </summary>
 public sealed class PcapFrameSource : IFrameSource
 {
     private const int CacheSize = 16;
@@ -18,7 +12,7 @@ public sealed class PcapFrameSource : IFrameSource
     private readonly VelodyneDecoder _decoder;
     private readonly long[] _offsets;
     private readonly double[] _packetTimes;
-    private readonly int[] _frameStarts; // pierwszy pakiet kazdej klatki + wartownik na koncu
+    private readonly int[] _frameStarts;
     private readonly double[] _times;
 
     private readonly FrameCache _cache = new(CacheSize);
@@ -66,7 +60,6 @@ public sealed class PcapFrameSource : IFrameSource
         _packetTimes = packetTimes.ToArray();
         _frameStarts = frameStarts.ToArray();
 
-        // Czasy klatek musza scisle rosnac, takze przy wadliwych znacznikach w pliku.
         _times = new double[FrameCount];
         for (int i = 0; i < _times.Length; i++)
         {
@@ -85,9 +78,6 @@ public sealed class PcapFrameSource : IFrameSource
 
     public double Duration => _times[^1];
 
-    /// <summary>
-    /// Liczba pakietow danych w pliku.
-    /// </summary>
     public int PacketCount => _offsets.Length;
 
     public int FrameAt(double positionSeconds) => FrameTimes.IndexAt(_times, positionSeconds);

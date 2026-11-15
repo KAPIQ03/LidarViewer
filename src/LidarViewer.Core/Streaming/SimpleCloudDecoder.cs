@@ -3,9 +3,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Dekoder pakietow wlasnego protokolu LVLR.
-/// </summary>
 public sealed class SimpleCloudDecoder : IPacketDecoder
 {
     public string Name => "Wlasny protokul (LVLR)";

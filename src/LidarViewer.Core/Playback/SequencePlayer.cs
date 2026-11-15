@@ -1,9 +1,5 @@
 namespace LidarViewer.Core.Playback;
 
-/// <summary>
-/// Odtwarzacz sekwencji. Nie zna UI - czas podaje metoda Advance, a o
-/// zmianie kadru informuje przez zdarzenie FrameChanged.
-/// </summary>
 public sealed class SequencePlayer
 {
     private const double MinSpeed = 0.1;
@@ -38,20 +34,10 @@ public sealed class SequencePlayer
 
     public bool Loop { get; set; }
 
-    /// <summary>
-    /// Pierwsza klatka zakresu odtwarzania (0-based). Odtwarzanie, petla i przewijanie nie wychodza poza zakres.
-    /// </summary>
     public int StartFrame => _startFrame;
 
-    /// <summary>
-    /// Ostatnia klatka zakresu (0-based, wlacznie).
-    /// </summary>
     public int EndFrame => _endFrame;
 
-    /// <summary>
-    /// Ustawia zakres odtwarzania; wartosci sa obcinane do dostepnych klatek, a poczatek nie moze byc za koncem.
-    /// Biezaca pozycja zostaje wciagnieta do zakresu.
-    /// </summary>
     public void SetRange(int startFrame, int endFrame)
     {
         int last = _sequence.FrameCount - 1;
@@ -64,9 +50,6 @@ public sealed class SequencePlayer
 
     private double EndTime => _sequence.Times[_endFrame];
 
-    /// <summary>
-    /// Przesuwa o podana liczbe klatek (ujemna - wstecz) i zatrzymuje odtwarzanie.
-    /// </summary>
     public void Step(int frames)
     {
         Pause();

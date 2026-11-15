@@ -3,12 +3,6 @@ using System.Xml.Linq;
 
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Czyta plik kalibracji Velodyne w formacie db.xml (boost_serialization), takim jak w VeloView.
-/// Uwzgledniane pola: rotCorrection_, vertCorrection_ (stopnie), distCorrection_,
-/// vertOffsetCorrection_, horizOffsetCorrection_ (centymetry). Pozostale korekty (ogniskowa,
-/// dwupunktowa korekta dystansu HDL-64E, intensywnosc) sa pomijane.
-/// </summary>
 public static class VelodyneCalibrationReader
 {
     public static VelodyneCalibration Read(string path)
@@ -43,7 +37,6 @@ public static class VelodyneCalibrationReader
         if (lasers.Count == 0)
             throw new InvalidDataException("W pliku kalibracji nie znaleziono żadnego lasera.");
 
-        // Numery laserow musza byc ciagle od 0, bo decoder indeksuje nimi pakiet.
         for (int i = 0; i < lasers.Count; i++)
             if (!lasers.ContainsKey(i))
                 throw new InvalidDataException($"W kalibracji brakuje lasera o numerze {i}.");

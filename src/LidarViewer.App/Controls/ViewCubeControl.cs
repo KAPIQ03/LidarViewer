@@ -10,10 +10,6 @@ using LidarViewer.Core.Rendering;
 
 namespace LidarViewer.App.Controls;
 
-/// <summary>
-/// Kostka orientacji w rogu widoku 3D (jak w Blenderze): pokazuje, jak obrocona jest scena,
-/// a klikniecie sciany ustawia widok wzdluz tej osi. Cala matematyka jest w <see cref="ViewCube"/>.
-/// </summary>
 public sealed class ViewCubeControl : Control
 {
     private const double CubeSize = 96;
@@ -49,7 +45,6 @@ public sealed class ViewCubeControl : Control
         set => SetValue(PitchProperty, value);
     }
 
-    /// <summary>Uzytkownik kliknal sciane - kierunek patrzenia kamery.</summary>
     public event Action<Vector3>? DirectionRequested;
 
     private static Color AxisColor(Vector3 axis)

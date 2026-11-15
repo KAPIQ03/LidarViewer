@@ -6,9 +6,6 @@ using LidarViewer.App.ViewModels;
 
 namespace LidarViewer.App.Converters;
 
-/// <summary>
-/// Zamienia format pakietow na czytelna nazwe dla uzytkownika.
-/// </summary>
 public sealed class LiveProtocolToTextConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>

@@ -25,26 +25,18 @@ public sealed class OrbitCamera
         Distance = SceneRadius * 2.5f;
     }
 
-    /// <summary>
-    /// Przywraca domyslny kat patrzenia. Odleglosc zostaje, bo zalezy od
-    /// rozmiaru chmury.
-    /// </summary>
     public void Reset()
     {
         Yaw = MathF.PI / 4;
         Pitch = MathF.PI / 6;
     }
 
-    /// <summary>
-    /// Ustawia kamere tak, by patrzyla wzdluz podanego kierunku (np. +X, -Z), nie zmieniajac celu ani odleglosci.
-    /// Patrzenie dokladnie w gore/w dol jest ograniczone do MaxPitch, a kierunek obrotu zostaje bez zmian.
-    /// </summary>
     public void LookAlong(Vector3 direction)
     {
         if (direction.LengthSquared() < 1e-12f)
             return;
 
-        Vector3 offset = -Vector3.Normalize(direction); // polozenie kamery wzgledem celu
+        Vector3 offset = -Vector3.Normalize(direction);
         Pitch = Math.Clamp(MathF.Asin(Math.Clamp(offset.Z, -1f, 1f)), -MaxPitch, MaxPitch);
         if (MathF.Abs(offset.X) > 1e-6f || MathF.Abs(offset.Y) > 1e-6f)
             Yaw = MathF.Atan2(offset.Y, offset.X);

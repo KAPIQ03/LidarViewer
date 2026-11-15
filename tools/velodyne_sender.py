@@ -53,7 +53,7 @@ def static_scan(az_deg, laser):
     else:
         horizontal = wall
     z = horizontal * math.tan(el)
-    if z > 2.5:  # sufit poza zasiegiem
+    if z > 2.5:
         return None
     return horizontal / math.cos(el), 60 + (laser * 9) % 100
 
@@ -62,7 +62,7 @@ def static_scan(az_deg, laser):
 
 def make_packets(rpm, seconds, loss, rng):
     """Generator (pakiet bajty, czas wyslania wzgledem startu [s])."""
-    step_deg = rpm * 360.0 / 60.0 * (2 * FIRING_US * 1e-6)  # przyrost azymutu na blok
+    step_deg = rpm * 360.0 / 60.0 * (2 * FIRING_US * 1e-6)
     cache = {}
     packet_period = BLOCKS * 2 * FIRING_US * 1e-6
     t = 0.0
@@ -78,7 +78,7 @@ def make_packets(rpm, seconds, loss, rng):
             packet += struct.pack("<HH", 0xEEFF, int(round(block_az * 100)) % 36000)
             for firing in range(2):
                 f_az = (block_az + step_deg / 2 * firing) % 360.0
-                key = int(round(f_az * 20))  # krok 0,05 stopnia - wystarczy dla stalej sceny
+                key = int(round(f_az * 20))
                 near = abs((f_az - cyl_az + 180) % 360 - 180) < 8
                 for laser in range(16):
                     if (key, laser) not in cache:
@@ -117,19 +117,18 @@ def cylinder_hit(az_deg, laser, cx, cy, current):
     return current
 
 
-# ---------- odtwarzanie pcap / pcapng ----------
 
 def udp_payload(data, linktype):
     """Ladunek UDP z ramki albo None."""
-    if linktype == 1:      # Ethernet
+    if linktype == 1:
         off = 14
         if len(data) >= 14 and data[12:14] == b"\x81\x00":
             off = 18
-    elif linktype == 113:  # Linux cooked
+    elif linktype == 113:
         off = 16
-    elif linktype == 101:  # raw IP
+    elif linktype == 101:
         off = 0
-    elif linktype == 0:    # BSD loopback
+    elif linktype == 0:
         off = 4
     else:
         return None
@@ -166,7 +165,7 @@ def read_pcap(path):
                 linktypes.append(struct.unpack("<H", body[:2])[0])
             elif btype == 6:
                 iface, hi, lo, cap, _ = struct.unpack("<IIIII", body[:20])
-                ts = ((hi << 32) | lo) / 1e6  # domyslna rozdzielczosc 1 us
+                ts = ((hi << 32) | lo) / 1e6
                 payload = udp_payload(body[20:20 + cap], linktypes[iface] if iface < len(linktypes) else 1)
                 if payload:
                     yield ts, payload
@@ -214,7 +213,7 @@ def main():
         base = 0.0
         prev_t = 0.0
         for payload, t in source():
-            if t < prev_t:   # poczatek kolejnej petli nagrania
+            if t < prev_t:
                 base += prev_t
             prev_t = t
             due = start + base + t

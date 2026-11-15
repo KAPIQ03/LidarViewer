@@ -27,10 +27,6 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(HasIntensity))]
     public partial PointCloud? PointCloud { get; set; }
 
-    /// <summary>
-    /// Wczytany plik - zrodlo pipeline. Punkty widoczne w scenie to wynik
-    /// filtrow, a nie surowa chmura.
-    /// </summary>
     [ObservableProperty]
     public partial PointCloud? SourceCloud { get; set; }
 
@@ -48,7 +44,6 @@ public partial class MainViewModel : ViewModelBase
 
     public bool Is3D => ViewMode == ViewMode.Widok3D;
 
-    /// <summary>Kostka orientacji jest czescia widoku 3D.</summary>
     public bool ShowViewCube => Is3D;
     public bool Is2D => ViewMode == ViewMode.Widok2D;
 
@@ -86,11 +81,6 @@ public partial class MainViewModel : ViewModelBase
 
     public ColormapKind[] Colormaps { get; } = Enum.GetValues<ColormapKind>();
 
-    // Zakres kolorow ma trzy stany: wartosc wpisana recznie przez
-    // uzytkownika, wartosc policzona z danych oraz domyslne 0..1, ktore jest
-    // tylko placeholderem. Roznica miedzy nimi jest istotna - placeholder nie
-    // moze zostac uznany za wybor uzytkownika, bo chmura wyswietlalaby sie
-    // jednokolorowo bez zadnego ostrzezenia.
     private bool _rangeManual;
     private bool _rangeComputed;
     private bool _updatingRange;
@@ -144,15 +134,10 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// Plik kalibracji Velodyne (db.xml). Pusty = wbudowana kalibracja VLP-16. Uzywany przy
-    /// otwieraniu nagran pcap i w trybie live Velodyne.
-    /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CalibrationLabel))]
     public partial string CalibrationPath { get; set; } = "";
 
-    /// <summary>Model z wbudowana kalibracja - uzywany, gdy nie wskazano pliku db.xml.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CalibrationLabel))]
     public partial VelodyneModel SensorModel { get; set; } = VelodyneModel.Vlp16;
@@ -174,51 +159,28 @@ public partial class MainViewModel : ViewModelBase
         ? VelodyneCalibration.Hdl32E
         : VelodyneCalibration.Vlp16;
 
-    /// <summary>Rozmiar punktu w widoku 3D (piksele).</summary>
     [ObservableProperty]
     public partial double PointSize { get; set; } = 2.0;
 
-    /// <summary>Kolowa siatka pomiarowa w widoku 3D.</summary>
     [ObservableProperty]
     public partial bool ShowGrid { get; set; } = true;
 
-    /// <summary>Osie ukladu wspolrzednych w widoku 3D.</summary>
     [ObservableProperty]
     public partial bool ShowAxes { get; set; } = true;
 
     [ObservableProperty]
     public partial string Status { get; set; } = "Podaj ścieżkę do pliku .vtp.";
 
-    /// <summary>
-    /// Czy widok ma sam dopasowac kamere do chmury. W trybie live kamera
-    /// zostaje na miejscu, zeby uzytkownik mogl obracac chmure recznie.
-    /// </summary>
     public bool AutoFitCamera => !IsLive && !HasSequence;
 
-    /// <summary>
-    /// Zwieksza sie przy kazdym nowym zbiorze danych (plik, sekwencja). Widok 3D
-    /// dopasowuje wtedy kamere raz, a kolejne klatki sekwencji jej nie ruszaja.
-    /// </summary>
     [ObservableProperty]
     public partial int FitVersion { get; set; }
 
-    /// <summary>
-    /// Czy widok 2D ma sam resetowac zoom i przesuniecie. W trybie live
-    /// widok zostaje na miejscu.
-    /// </summary>
     public bool AutoResetView => !IsLive && !HasSequence;
 
-    /// <summary>
-    /// Czy panel filtrow jest widoczny. Panel mozna zamknac, zeby nie
-    /// zaslanial widoku chmury.
-    /// </summary>
     [ObservableProperty]
     public partial bool IsFiltersPanelOpen { get; set; } = true;
 
-    /// <summary>
-    /// Czy okno diagnostyki jest widoczne. Domyslnie zamkniete, bo to
-    /// pomocnicze okno, ktore zaslanialo dolna czesc widoku.
-    /// </summary>
     [ObservableProperty]
     public partial bool IsDiagnosticsOpen { get; set; }
 
@@ -234,9 +196,6 @@ public partial class MainViewModel : ViewModelBase
         Speed = Speeds.First(speed => speed.Multiplier == 1.0);
     }
 
-    /// <summary>
-    /// Jawne wejscie dla testow - produkcja wczytuje plik komenda Load.
-    /// </summary>
     public void SetSourceForTests(PointCloud cloud)
     {
         ArgumentNullException.ThrowIfNull(cloud);
@@ -284,9 +243,6 @@ public partial class MainViewModel : ViewModelBase
             Status = $"Po filtrach: {Pipeline.Output.Count:N0} punktów.";
     }
 
-    /// <summary>
-    /// Podsumowanie do paska stanu: liczba punktow w scenie i zrodlo danych.
-    /// </summary>
     public string StatusInfo
     {
         get
@@ -298,7 +254,6 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Narzedzie pomiaru odleglosci miedzy dwoma punktami w widoku 3D.</summary>
     [ObservableProperty]
     public partial bool IsMeasuring { get; set; }
 
@@ -317,13 +272,9 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnIsMeasuringChanged(bool value) => OnPropertyChanged(nameof(MeasureInfo));
 
-    /// <summary>Czy tabela punktow (spreadsheet) jest otwarta.</summary>
     [ObservableProperty]
     public partial bool IsTableOpen { get; set; }
 
-    /// <summary>
-    /// Tabela biezacej chmury, null gdy zamknieta lub brak danych. Wiersze sa formatowane leniwie.
-    /// </summary>
     [ObservableProperty]
     public partial PointTable? Table { get; set; }
 
@@ -337,10 +288,6 @@ public partial class MainViewModel : ViewModelBase
         RefreshTable();
         OnPropertyChanged(nameof(StatusInfo));
 
-        // Nowy plik ma inne wartosci danych, wiec zakres policzony dla
-        // poprzedniego pliku przestaje obowiazywac. Zakres wpisany recznie
-        // przez uzytkownika zostaje - to swiadome ustawienie, a nie
-        // wyliczenie z danych.
         _rangeComputed = false;
         ApplyRangeForFile();
     }
@@ -349,9 +296,6 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnAutoColorRangeChanged(bool value)
     {
-        // Wylaczenie trybu automatycznego nie jest wyborem zakresu - to
-        // jedynie zamrozenie biezacej wartosci. O tym, czy zakres zostal
-        // wpisany recznie, decyduje wylacznie OnManualRangeEdit.
         if (!value)
             return;
 
@@ -363,9 +307,6 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnColorRangeMaxChanged(float value) => OnManualRangeEdit();
 
-    // Reczna zmiana min lub max oznacza wybor uzytkownika, wiec zakres
-    // przestaje byc automatyczny. Inaczej wpisana wartosc zostalaby
-    // nadpisana przy zmianie trybu kolorowania.
     private void OnManualRangeEdit()
     {
         if (_updatingRange)
@@ -378,21 +319,11 @@ public partial class MainViewModel : ViewModelBase
             AutoColorRange = false;
     }
 
-    // Wybor trybu kolorowania ustawia zakres na dane, inaczej chmura
-    // zostalaby jednokolorowa bez zadnego ostrzezenia.
-    //
-    // Tryb reczny zamraza zakres wylacznie wtedy, gdy wartosc pochodzi
-    // z danych. Placeholder 0..1 musi zostac podmieniony w kazdym
-    // przypadku, bo inaczej chmura wyswietlalaby sie jednokolorowo.
     private void ApplyRangeForMode()
     {
         if (PointCloud is null || ColorMode == ColorMode.Solid)
             return;
 
-        // Zakres wpisany recznie przez uzytkownika jest jego decyzja i nie
-        // moze zostac podmieniony - nawet wtedy, gdy jest pusty (min == max)
-        // albo odwrocony. Uzytkownik dostanie wtedy ostrzezenie zamiast
-        // cichego podmienienia na zakres z danych.
         if (_rangeManual)
             return;
 
@@ -402,9 +333,6 @@ public partial class MainViewModel : ViewModelBase
         SeedRangeFromData();
     }
 
-    // Wczytanie nowego pliku uniewaznia zakres policzony dla poprzedniego,
-    // bo dane moga miec inny zakres wartosci. Zakres wpisany recznie przez
-    // uzytkownika zostaje nietkniety.
     private void ApplyRangeForFile()
     {
         if (PointCloud is null || ColorMode == ColorMode.Solid)
@@ -425,9 +353,6 @@ public partial class MainViewModel : ViewModelBase
         _updatingRange = true;
         try
         {
-            // Zakres ustawiamy w kolejnosci, ktora nigdy nie publikuje
-            // odwroconego zakresu (nowe Min przy starym Max) - chmura
-            // flashowaby wtedy jednym kolorem.
             if (attribute.Min > ColorRangeMax)
             {
                 ColorRangeMax = attribute.Max;

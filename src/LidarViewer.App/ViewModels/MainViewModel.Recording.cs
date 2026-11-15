@@ -23,41 +23,19 @@ public partial class MainViewModel
     private string? _pcapPath;
     private volatile string? _pcapError;
 
-    /// <summary>
-    /// Odstep miedzy nagranymi klatkami w sekundach. Klatka to cala chmura
-    /// widoczna w danym momencie, wiec jedna na sekunde daje zapis podobny
-    /// do filmu zamiast zalewy plikow.
-    /// </summary>
     public double RecordingIntervalSeconds { get; set; } = 1.0;
 
-    /// <summary>
-    /// Czy trwa nagrywanie strumienia live do pliku.
-    /// </summary>
     public bool IsRecording
     {
         get => _recorder is not null || _pcapWriter is not null;
     }
 
-    /// <summary>
-    /// Czy nagranie jest zapisem surowych pakietow do pliku .pcap (natywny format Velodyne), a nie
-    /// zestawem klatek PLY. Dotyczy trybu live z protokolem Velodyne.
-    /// </summary>
     public bool RecordsRawPackets => IsLive && LiveProtocol == LiveProtocol.VelodyneVlp16;
 
-    /// <summary>
-    /// Liczba zapisanych pakietow w nagraniu pcap.
-    /// </summary>
     public long RecordedPacketCount => _pcapWriter?.PacketCount ?? 0;
 
-    /// <summary>
-    /// Czy uzytkownik moze zaczac nowe nagrywanie. Nagrywanie wymaga
-    /// strumienia live i nie moze startowac dwa razy.
-    /// </summary>
     public bool CanStartRecording => IsLive && !IsRecording;
 
-    /// <summary>
-    /// Liczba klatek przyjetych do nagrania.
-    /// </summary>
     public int RecordedFrameCount => _recorder?.FrameCount ?? 0;
 
     public string RecordInfo =>
@@ -65,10 +43,6 @@ public partial class MainViewModel
         : _recorder is not null ? $"Nagrane klatki: {RecordedFrameCount:N0}"
         : string.Empty;
 
-    /// <summary>
-    /// Zapisuje chmure widoczna w scenie - czyli juz przepuszczona przez
-    /// filtry - do pliku. Format wybiera sie po rozszerzeniu.
-    /// </summary>
     public void ExportCloud(string path)
     {
         if (PointCloud is null)
@@ -88,10 +62,6 @@ public partial class MainViewModel
         }
     }
 
-    /// <summary>
-    /// Zaczyna nagrywanie strumienia live do katalogu. Katalog jest
-    /// tworzony, a klatki dostaja pliki frame_00000.ply i kolejne.
-    /// </summary>
     public void StartRecording(string directory)
     {
         if (_recorder is not null)
@@ -112,10 +82,6 @@ public partial class MainViewModel
         }
     }
 
-    /// <summary>
-    /// Zaczyna nagrywanie surowych pakietow live do pliku .pcap (otwieranym tez przez Wireshark i VeloView).
-    /// Wymaga trwajacego odbioru UDP.
-    /// </summary>
     public void StartPcapRecording(string path)
     {
         if (IsRecording)
@@ -144,9 +110,6 @@ public partial class MainViewModel
         }
     }
 
-    /// <summary>
-    /// Dopisuje surowy datagram do nagrania pcap. Wolane z watku odbioru, wiec bledy dysku tylko zapamietuje.
-    /// </summary>
     private void RecordRawPacket(ReadOnlyMemory<byte> payload, DateTimeOffset time)
     {
         PcapWriter? writer = _pcapWriter;
@@ -163,10 +126,6 @@ public partial class MainViewModel
         }
     }
 
-    /// <summary>
-    /// Konczy nagrywanie i zapisuje manifest, dzieki czemu nagranie da sie
-    /// odtworzyc w aplikacji.
-    /// </summary>
     public async Task StopRecordingAsync()
     {
         if (_pcapWriter is { } pcapWriter)

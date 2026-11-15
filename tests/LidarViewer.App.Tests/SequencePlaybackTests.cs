@@ -264,7 +264,7 @@ public class SequencePlaybackTests : IDisposable
         Assert.Equal("Klatka 1 / 2", vm.FrameInfo);
         Assert.Equal(2 * 12 * 32, vm.PointCloud?.Count);
 
-        vm.PositionSeconds = 0.12; // druga klatka zaczyna sie po ok. 0.1 s (znaczniki czasu w pliku sa zaokraglone do mikrosekund)
+        vm.PositionSeconds = 0.12;
         Assert.Equal("Klatka 2 / 2", vm.FrameInfo);
     }
 
@@ -339,7 +339,7 @@ public class SequencePlaybackTests : IDisposable
     [Fact]
     public void TrailingFramesAddPreviousFramesToView()
     {
-        WriteSequence(frames: 4); // kazda klatka ma 2 punkty
+        WriteSequence(frames: 4);
         var vm = new MainViewModel();
         vm.LoadSequenceCommand.Execute(_dir);
         vm.FrameNumber = 3;
@@ -349,7 +349,7 @@ public class SequencePlaybackTests : IDisposable
         Assert.Equal(6, vm.PointCloud?.Count);
 
         vm.FrameNumber = 1;
-        Assert.Equal(2, vm.PointCloud?.Count); // brak wczesniejszych klatek
+        Assert.Equal(2, vm.PointCloud?.Count);
 
         vm.TrailingFrames = 99;
         Assert.Equal(MainViewModel.MaxTrailingFrames, vm.TrailingFrames);

@@ -61,7 +61,7 @@ public class LasReaderTests : TempDirTestBase
 
         var cloud = LasReader.Read(Write("a.las", Build(4, 6, 30, points)));
 
-        Assert.Equal(new byte[] { 100, 200 }, cloud.Intensity); // 16-bit >> 8
+        Assert.Equal(new byte[] { 100, 200 }, cloud.Intensity);
         Assert.Equal(new[] { 3, 7 }, cloud.Category);
     }
 

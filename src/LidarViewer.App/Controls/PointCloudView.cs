@@ -40,11 +40,6 @@ public sealed class PointCloudView : Control
         set => SetValue(ColorSettingsProperty, value);
     }
 
-    /// <summary>
-    /// Czy widok ma zresetowac zoom i przesuniecie przy kazdej zmianie
-    /// chmury. W trybie live wylaczone, zeby kolejne klatki nie cofaly
-    /// ustawienia uzytkownika.
-    /// </summary>
     public static readonly StyledProperty<bool> AutoResetViewProperty =
         AvaloniaProperty.Register<PointCloudView, bool>(nameof(AutoResetView), true);
 
@@ -70,8 +65,6 @@ public sealed class PointCloudView : Control
     {
         PointCloudProperty.Changed.AddClassHandler<PointCloudView>((view, _) =>
         {
-            // W trybie live widok zostaje na miejscu - reset tylko przy
-            // pierwszej chmurze.
             if (view.AutoResetView || !view._viewResetOnce)
             {
                 view.ResetZoomPan();
@@ -97,9 +90,6 @@ public sealed class PointCloudView : Control
         InvalidateVisual();
     }
 
-    /// <summary>
-    /// Przywraca domyslny zoom i przesuniecie widoku.
-    /// </summary>
     public void ResetView() => ResetZoomPan();
 
     public override void Render(DrawingContext context)

@@ -4,10 +4,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Export;
 
-/// <summary>
-/// Zapisuje chmure do pliku PCD 0.7 (DATA binary): pola x, y, z oraz opcjonalnie intensity (float).
-/// Wspolrzedne swiata (pozycja + Origin), jak w PlyWriter. Plik czyta PcdReader, PCL i CloudCompare.
-/// </summary>
 public static class PcdWriter
 {
     public static void Write(string path, PointCloud cloud)

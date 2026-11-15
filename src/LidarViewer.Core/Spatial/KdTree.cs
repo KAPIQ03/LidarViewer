@@ -1,9 +1,5 @@
 namespace LidarViewer.Core.Spatial;
 
-/// <summary>
-/// Drzewo KD do wyszukiwania k najblizszych sasiadow w chmurze punktow.
-/// Buduje sie przez quickselect wzdluz osi z najwiekszym rozrzutem.
-/// </summary>
 public sealed class KdTree
 {
     private readonly float[] _positions;
@@ -51,11 +47,6 @@ public sealed class KdTree
         return node;
     }
 
-    /// <summary>
-    /// Os o najwiekszym rozrzutem punktow w poddrzewie. Chmury lidaru sa
-    /// mocno anizotropowe (plaskosc terenu), a podzial wzdluz najszerszej
-    /// osi daje plytsze drzewo i mniej odwiedzonych wezlow przy zapytaniu.
-    /// </summary>
     private int WidestAxis(int[] order, int begin, int end)
     {
         var min = new float[3] { float.MaxValue, float.MaxValue, float.MaxValue };
@@ -116,12 +107,6 @@ public sealed class KdTree
         }
     }
 
-    /// <summary>
-    /// Suma odleglosci do k najblizszych sasiadow punktu o danym indeksie.
-    /// Odleglosci liczone sa w podwojnej precyzji, ale pierwiastek jest
-    /// wyliczany dopiero dla k najlepszych kandydatow, a nie dla kazdego
-    /// odwiedzonego wezla drzewa.
-    /// </summary>
     public double SumOfNearestDistances(int pointIndex, int k, double[] buffer)
     {
         ArgumentNullException.ThrowIfNull(buffer);
@@ -160,8 +145,6 @@ public sealed class KdTree
                 best[slot] = squared;
                 if (found < k) found++;
 
-                // Tablica trzymana rosnaco - najgorszy zapis jest ostatni,
-                // wiec podmiana na nim kosztuje jedno przesuniecie.
                 while (slot > 0 && best[slot - 1] > best[slot])
                 {
                     (best[slot - 1], best[slot]) = (best[slot], best[slot - 1]);

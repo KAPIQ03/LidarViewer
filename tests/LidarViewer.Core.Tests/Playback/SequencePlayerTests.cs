@@ -180,7 +180,6 @@ public class SequencePlayerTests
 
         player.SetRange(1, 1);
 
-        // Zakres jednej klatki wciaga pozycje do tej klatki.
         Assert.Equal(1, player.FrameIndex);
         player.Seek(0.0);
         Assert.Equal(1, player.FrameIndex);
@@ -195,7 +194,7 @@ public class SequencePlayerTests
         player.SetRange(1, 2);
         player.Play();
 
-        player.Advance(TimeSpan.FromMilliseconds(150)); // 0.1 -> 0.25 >= koniec zakresu (0.2)
+        player.Advance(TimeSpan.FromMilliseconds(150));
 
         Assert.True(player.IsPlaying);
         Assert.Equal(1, player.FrameIndex);

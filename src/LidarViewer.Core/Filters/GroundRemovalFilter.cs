@@ -4,11 +4,6 @@ using LidarViewer.Core.Spatial;
 
 namespace LidarViewer.Core.Filters;
 
-/// <summary>
-/// Usuwanie podlogi metoda RANSAC: dopasowuje plaszczyzne ziemi na
-/// podstawie losowych probek, a nastepnie kasuje punkty lezace blisko
-/// dopasowanej plaszczyzny.
-/// </summary>
 public static class GroundRemovalFilter
 {
     private const int MaximumSample = 5000;
@@ -50,11 +45,6 @@ public static class GroundRemovalFilter
 
         if (bestInliers <= 0) return KeepAll(cloud);
 
-        // Dopasowanie refine: najlepsza plaszczyzna z RANSAC przechodzi
-        // dokladnie przez trzy punkty, co przy szumie daje lekki blad.
-        // Ponowne dopasowanie na wszystkich inlierach daje model blizszy
-        // rzeczywistemu terenowi. Refinement jest odrzucany, gdy pogarsza
-        // wynik - np. dla chmury zdegenerowanej do linii.
         int[] inlierIndices = CollectInliers(positions, count, best, distanceThreshold);
         if (inlierIndices.Length >= 3)
         {
@@ -80,9 +70,6 @@ public static class GroundRemovalFilter
         return CloudSubset.Select(cloud, keep, kept);
     }
 
-    /// <summary>
-    /// Probka do losowania: wszystkie punkty albo ich rowno rozlozona podprobe.
-    /// </summary>
     private static int[] SelectSample(int count)
     {
         if (count <= MaximumSample)

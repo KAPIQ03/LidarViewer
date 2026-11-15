@@ -7,23 +7,11 @@ using LidarViewer.Core.Playback;
 
 namespace LidarViewer.Core.Recording;
 
-/// <summary>
-/// Nagrywa klatki chmury punktow do katalogu w formacie, ktory aplikacja
-/// potrafi odtworzyc: pliki PLY plus manifest sequence.json.
-///
-/// Klatki zapisuje watek w tle, wiec strumien live nie zwalnia, a zapis
-/// duzej chmury nie blokuje interfejsu.
-/// </summary>
 public sealed class SequenceRecorder : IDisposable
 {
     public const string FrameFilePrefix = "frame_";
     public const string FrameFileExtension = ".ply";
 
-    /// <summary>
-    /// Najmniejszy odstep miedzy czasami klatek. Manifest wymaga czasow
-    /// rosnacych, wiec klatki dodane w tej samej chwili musza dostac
-    /// rozne, chociaż minimalnie rozne, znaczniki czasu.
-    /// </summary>
     private const double MinTimestampStep = 0.001;
 
     private static readonly JsonSerializerOptions Options = new()
@@ -67,20 +55,11 @@ public sealed class SequenceRecorder : IDisposable
 
     public string Name { get; }
 
-    /// <summary>
-    /// Liczba przyjetych klatek. Rosnie od razu po dodaniu, bo plik po
-    /// stronie jest zapisywany asynchronicznie.
-    /// </summary>
     public int FrameCount
     {
         get { lock (_sync) return _frames.Count; }
     }
 
-    /// <summary>
-    /// Dodaje klatke do nagrania. Zwraca false, gdy klatka przyszla za
-    /// szybko i zostala pominieta - nagranie live ma pelne dziesiatki
-    /// klatek na sekunde, a dysk tego nie udzwignie.
-    /// </summary>
     public bool AddFrame(PointCloud cloud)
     {
         ArgumentNullException.ThrowIfNull(cloud);
@@ -109,10 +88,6 @@ public sealed class SequenceRecorder : IDisposable
         }
     }
 
-    /// <summary>
-    /// Kończy nagranie i zapisuje manifest. Zwraca ścieżkę do pliku
-    /// sequence.json.
-    /// </summary>
     public async Task<string> FinishAsync()
     {
         lock (_sync)
@@ -134,10 +109,6 @@ public sealed class SequenceRecorder : IDisposable
         return manifestPath;
     }
 
-    /// <summary>
-    /// Przerywa nagranie i usuwa zapisane pliki. Uzywane przy anulowaniu,
-    /// zeby nie zostawic polowicowego nagrania na dysku.
-    /// </summary>
     public async Task AbortAsync()
     {
         lock (_sync)
@@ -164,8 +135,6 @@ public sealed class SequenceRecorder : IDisposable
             }
             catch (IOException)
             {
-                // Plik zajety przez inny proces - kasowanie nie powinno
-                // przerzucac calej operacji.
             }
             catch (UnauthorizedAccessException)
             {

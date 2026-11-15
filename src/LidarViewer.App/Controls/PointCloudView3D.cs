@@ -47,11 +47,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(ColorSettingsProperty, value);
     }
 
-    /// <summary>
-    /// Czy kamera ma dopasowac sie do chmury przy kazdej zmianie. W trybie
-    /// live wyłączone, bo kolejne klatki cofałyby obrót ustawiony przez
-    /// uzytkownika.
-    /// </summary>
     public static readonly StyledProperty<bool> AutoFitCameraProperty =
         AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(AutoFitCamera), true);
 
@@ -61,10 +56,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(AutoFitCameraProperty, value);
     }
 
-    /// <summary>
-    /// Numer zbioru danych. Zmiana wymusza ponowne dopasowanie kamery przy
-    /// nastepnej chmurze, takze gdy AutoFitCamera jest wylaczone.
-    /// </summary>
     public static readonly StyledProperty<int> FitVersionProperty =
         AvaloniaProperty.Register<PointCloudView3D, int>(nameof(FitVersion));
 
@@ -74,23 +65,18 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(FitVersionProperty, value);
     }
 
-    /// <summary>
-    /// Tryb "Kamera": widok z miejsca czujnika, obracany myszka (bez orbitowania).
-    /// </summary>
     public static readonly StyledProperty<float> ViewYawProperty =
         AvaloniaProperty.Register<PointCloudView3D, float>(nameof(ViewYaw));
 
     public static readonly StyledProperty<float> ViewPitchProperty =
         AvaloniaProperty.Register<PointCloudView3D, float>(nameof(ViewPitch));
 
-    /// <summary>Aktualny yaw kamery orbitalnej (dla kostki orientacji).</summary>
     public float ViewYaw
     {
         get => GetValue(ViewYawProperty);
         private set => SetValue(ViewYawProperty, value);
     }
 
-    /// <summary>Aktualny pitch kamery orbitalnej (dla kostki orientacji).</summary>
     public float ViewPitch
     {
         get => GetValue(ViewPitchProperty);
@@ -106,7 +92,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
     public static readonly StyledProperty<double> PointSizeProperty =
         AvaloniaProperty.Register<PointCloudView3D, double>(nameof(PointSize), 2.0);
 
-    /// <summary>Rozmiar punktu w pikselach urzadzenia logicznego.</summary>
     public double PointSize
     {
         get => GetValue(PointSizeProperty);
@@ -116,7 +101,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
     public static readonly StyledProperty<bool> ShowGridProperty =
         AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(ShowGrid), true);
 
-    /// <summary>Kolowa siatka pomiarowa w plaszczyznie czujnika.</summary>
     public bool ShowGrid
     {
         get => GetValue(ShowGridProperty);
@@ -126,7 +110,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
     public static readonly StyledProperty<bool> ShowAxesProperty =
         AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(ShowAxes), true);
 
-    /// <summary>Osie ukladu wspolrzednych (X czerwona, Y zielona, Z niebieska).</summary>
     public bool ShowAxes
     {
         get => GetValue(ShowAxesProperty);
@@ -136,9 +119,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
     public static readonly StyledProperty<bool> MeasureModeProperty =
         AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(MeasureMode));
 
-    /// <summary>
-    /// Narzedzie pomiaru: klikniecie (bez przeciagania) wybiera najblizszy punkt, drugi wybor wyznacza odleglosc.
-    /// </summary>
     public bool MeasureMode
     {
         get => GetValue(MeasureModeProperty);
@@ -148,7 +128,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
     public static readonly StyledProperty<double?> MeasuredDistanceProperty =
         AvaloniaProperty.Register<PointCloudView3D, double?>(nameof(MeasuredDistance), defaultBindingMode: BindingMode.OneWayToSource);
 
-    /// <summary>Odleglosc miedzy dwoma wybranymi punktami (jednostki chmury); null, gdy nie wybrano dwoch.</summary>
     public double? MeasuredDistance
     {
         get => GetValue(MeasuredDistanceProperty);
@@ -158,7 +137,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
     public static readonly StyledProperty<int> MeasuredPointCountProperty =
         AvaloniaProperty.Register<PointCloudView3D, int>(nameof(MeasuredPointCount), defaultBindingMode: BindingMode.OneWayToSource);
 
-    /// <summary>Ile punktow wybrano do pomiaru (0-2).</summary>
     public int MeasuredPointCount
     {
         get => GetValue(MeasuredPointCountProperty);
@@ -280,7 +258,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         unsafe { _gl.VertexAttribPointer(1, 4, VertexAttribPointerType.UnsignedByte, true, 4, null); }
         _gl.EnableVertexAttribArray(1);
 
-        // Osie i siatka: osobny VAO, te same atrybuty (pozycja, kolor RGBA).
         _guideVao = _gl.GenVertexArray();
         _guideVbo = _gl.GenBuffer();
         _guideColVbo = _gl.GenBuffer();
@@ -296,8 +273,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         if (!isEs) _gl.Enable(EnableCap.ProgramPointSize);
         _gl.Enable(EnableCap.DepthTest);
 
-        // Po ponownym utworzeniu kontekstu bufor kolorow jest nowy i pusty,
-        // wiec trzeba go wypelnic jeszcze raz.
         _uploadPending = true;
         _colorsDirty = true;
     }
@@ -350,7 +325,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
                 gl.DrawArrays(PrimitiveType.Lines, _axisVertexCount, (uint)_gridVertexCount);
             if (ShowAxes && _axisVertexCount > 0)
             {
-                // Osie lezą w plaszczyznie siatki - bez testu glebokosci rysujemy je nad nia i nad punktami.
                 gl.Disable(EnableCap.DepthTest);
                 gl.DrawArrays(PrimitiveType.Lines, 0, (uint)_axisVertexCount);
                 gl.Enable(EnableCap.DepthTest);
@@ -358,7 +332,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
 
             if (_measureVertexCount > 0)
             {
-                // Pomiar rysujemy na wierzchu, zeby nie znikal wsrod gestych punktow.
                 gl.Disable(EnableCap.DepthTest);
                 gl.DrawArrays(PrimitiveType.Lines, _axisVertexCount + _gridVertexCount, (uint)_measureVertexCount);
                 gl.Enable(EnableCap.DepthTest);
@@ -399,10 +372,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         RequestNextFrameRendering();
     }
 
-    /// <summary>
-    /// Zleca zrzut widoku. Przy najblizszym renderze piksele sa odczytywane z bufora ramki i przekazywane
-    /// (szerokosc, wysokosc, RGBA od gory do dolu) w wywolaniu zwrotnym na watku interfejsu.
-    /// </summary>
     public void RequestScreenshot(Action<int, int, byte[]> callback)
     {
         ArgumentNullException.ThrowIfNull(callback);
@@ -410,9 +379,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         RequestNextFrameRendering();
     }
 
-    /// <summary>
-    /// Ustawia widok wzdluz osi: kamera patrzy w podanym kierunku (np. (0,0,-1) - z gory na dol).
-    /// </summary>
     public void SetViewDirection(Vector3 direction)
     {
         _camera.LookAlong(direction);
@@ -432,7 +398,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         fixed (byte* data = raw)
             gl.ReadPixels(0, 0, (uint)width, (uint)height, Silk.NET.OpenGL.PixelFormat.Rgba, PixelType.UnsignedByte, data);
 
-        // OpenGL liczy wiersze od dolu, a obraz ma byc od gory; alfa wymuszamy na nieprzezroczysta.
         byte[] rgba = new byte[raw.Length];
         int stride = width * 4;
         for (int row = 0; row < height; row++)
@@ -446,9 +411,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         Dispatcher.UIThread.Post(() => callback(width, height, rgba));
     }
 
-    /// <summary>
-    /// Przywraca domyslna kamere i dopasowuje ja do aktualnej chmury.
-    /// </summary>
     public void ResetView()
     {
         _camera.Reset();
@@ -465,16 +427,9 @@ public sealed class PointCloudView3D : OpenGlControlBase
         RequestNextFrameRendering();
     }
 
-    /// <summary>
-    /// Pozycja czujnika w ukladzie sceny (przesunietym o _anchor): poczatek ukladu wspolrzednych, jesli
-    /// lezy wewnatrz chmury (nagrania lidaru), w przeciwnym razie srodek chmury (np. pliki LAS w ukladzie globalnym).
-    /// </summary>
     private Vector3 SensorPosition(PointCloud cloud) =>
         SensorLocator.Locate(cloud) is { } sensor ? sensor - _anchor : Vector3.Zero;
 
-    /// <summary>
-    /// Osie i siatka dla biezacej chmury: jeden bufor, osie pierwsze, potem siatka.
-    /// </summary>
     private unsafe void UploadGuides(GL gl, PointCloud cloud)
     {
         Vector3 sensorPosition = SensorPosition(cloud);
@@ -482,7 +437,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         Report($"Osie: czujnik w ({sensorPosition.X:F1}; {sensorPosition.Y:F1}; {sensorPosition.Z:F1}), Origin chmury ({cloud.Origin.X:F1}; {cloud.Origin.Y:F1}; {cloud.Origin.Z:F1}), {(SensorLocator.Locate(cloud) is null ? "poczatek ukladu poza chmura - osie w jej srodku" : "osie w poczatku ukladu")}.");
         _guidesDirty = false;
 
-        // Pomiar: krzyzyk na kazdym wybranym punkcie i odcinek miedzy nimi (zolte).
         var measurePositions = new List<float>();
         float cross = Math.Max(cloud.Radius * 0.01f, 0.02f);
         foreach (Vector3 point in _measurePoints)
@@ -521,7 +475,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         fixed (byte* data = colors)
             gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)colors.Length, data, BufferUsageARB.DynamicDraw);
 
-        // Powrot do VBO chmury, zeby kolejne wywolania nie zmienily atrybutow VAO punktow.
         gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
     }
 
@@ -547,8 +500,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _pointCount = cloud?.Count ?? 0;
         if (cloud is null || _pointCount == 0) return;
 
-        // Srodek odniesienia zmienia sie tylko przy dopasowaniu kamery. Dzieki temu kolejne
-        // klatki sekwencji lub live nie przesuwaja sceny, gdy ich zakres nieco sie rozni.
         bool fit = AutoFitCamera || !_cameraFitted;
         if (fit)
             _anchor = cloud.Center;
@@ -568,8 +519,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
             gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(relative.Length * sizeof(float)), data, BufferUsageARB.StaticDraw);
         ReportGlError(gl, "po BufferData");
 
-        // Kamera dopasowuje sie tylko do pierwszej chmury zbioru (live, sekwencja).
-        // Kolejne klatki nie cofaja obrotu ustawionego przez uzytkownika.
         if (fit)
         {
             _camera.FitTo(Vector3.Zero, cloud.Radius);
@@ -607,7 +556,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _rotating = _panning = false;
         e.Pointer.Capture(null);
 
-        // Klikniecie bez przeciagania w trybie pomiaru wybiera punkt.
         Point release = e.GetPosition(this);
         if (MeasureMode && _pressWasLeft && Math.Abs(release.X - _pressPoint.X) + Math.Abs(release.Y - _pressPoint.Y) < 4)
             PickMeasurePoint(release);
@@ -631,7 +579,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         if (index < 0)
             return;
 
-        // Trzeci wybor zaczyna pomiar od nowa.
         if (_measurePoints.Count >= 2)
             _measurePoints.Clear();
 
@@ -639,9 +586,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         UpdateMeasurement();
     }
 
-    /// <summary>
-    /// Usuwa wybrane punkty pomiaru.
-    /// </summary>
     public void ClearMeasurement()
     {
         _measurePoints.Clear();

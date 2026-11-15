@@ -30,7 +30,6 @@
     </Design.DataContext>
 
     <Grid RowDefinitions="Auto,*,Auto">
-        <!-- ===== Menu + pasek narzedzi ===== -->
         <StackPanel Grid.Row="0" x:Name="Toolbar">
             <Menu Background="{StaticResource PanelBgBrush}">
                 <MenuItem Header="_Plik">
@@ -152,7 +151,6 @@
             </Border>
         </StackPanel>
 
-        <!-- ===== Obszar roboczy ===== -->
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
             <DockPanel Grid.Column="0">
                 <Border DockPanel.Dock="Bottom" Classes="panel" BorderThickness="0,1,0,0" Padding="8"
@@ -176,7 +174,6 @@
                     </DockPanel>
                 </Border>
 
-                <!-- Pasek odtwarzania -->
                 <Border DockPanel.Dock="Bottom" Classes="panel" BorderThickness="0,1,0,0" Padding="10,8"
                         IsVisible="{Binding HasSequence}">
                     <StackPanel Spacing="6">
@@ -229,7 +226,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Widok sceny z nakladkami -->
                 <Grid>
                     <c:PointCloudView3D x:Name="View3D" IsVisible="{Binding Is3D}" PointCloud="{Binding PointCloud}"
                                         ColorSettings="{Binding ColorSettings}"
@@ -245,7 +241,6 @@
                                       Plane="{Binding Plane}" ColorSettings="{Binding ColorSettings}"
                                       AutoResetView="{Binding AutoResetView}" />
 
-                    <!-- Pusty stan -->
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10"
                                 IsVisible="{Binding PointCloud, Converter={x:Static ObjectConverters.IsNull}}"
                                 IsHitTestVisible="True">
@@ -278,7 +273,6 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Kostka orientacji -->
                     <c:ViewCubeControl x:Name="ViewCube" HorizontalAlignment="Right" VerticalAlignment="Top"
                                        Margin="0,14,18,0" IsVisible="{Binding ShowViewCube}"
                                        Yaw="{Binding #View3D.ViewYaw}" Pitch="{Binding #View3D.ViewPitch}"
@@ -299,7 +293,6 @@
                 </Grid>
             </DockPanel>
 
-            <!-- ===== Panel boczny ===== -->
             <ScrollViewer Grid.Column="1" x:Name="FiltersPanel" Width="340" Background="{StaticResource PanelBgBrush}"
                           BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1,0,0,0"
                           HorizontalScrollBarVisibility="Disabled"
@@ -492,7 +485,6 @@
             </ScrollViewer>
         </Grid>
 
-        <!-- ===== Pasek stanu ===== -->
         <Border Grid.Row="2" Classes="panel" BorderThickness="0,1,0,0" Padding="12,5">
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Center" FontSize="12"

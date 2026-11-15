@@ -29,10 +29,6 @@ public partial class App : Application
     private const string SamplePcapRelativePath =
         "lidar-samples/VLP-16 Sample Data/2015-07-23-14-37-22_Velodyne-VLP-16-Data_Downtown 10Hz Single.pcap";
 
-    /// <summary>
-    /// Szuka przykladowego nagrania VLP-16 dla symulatora, idac w gore od katalogu aplikacji.
-    /// Zwraca null, gdy pliku nie ma - wtedy symulator uzywa sceny syntetycznej.
-    /// </summary>
     private static string? FindSamplePcap()
     {
         for (var dir = new System.IO.DirectoryInfo(System.AppContext.BaseDirectory); dir is not null; dir = dir.Parent)

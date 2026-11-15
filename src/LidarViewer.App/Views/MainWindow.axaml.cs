@@ -25,22 +25,16 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        // Slider sam obsluguje wskaznik i oznacza zdarzenia jako obsluzone, wiec zwykle
-        // atrybuty XAML nigdy nie dostawaly PointerPressed/Released. Tunel + handledEventsToo
-        // lapie poczatek i koniec przeciagania.
         SeekSlider.AddHandler(PointerPressedEvent, OnScrubStart, RoutingStrategies.Tunnel, handledEventsToo: true);
         SeekSlider.AddHandler(PointerReleasedEvent, OnScrubEnd, RoutingStrategies.Bubble | RoutingStrategies.Tunnel, handledEventsToo: true);
         SeekSlider.AddHandler(PointerCaptureLostEvent, OnScrubEnd, RoutingStrategies.Bubble | RoutingStrategies.Tunnel, handledEventsToo: true);
 
-        // Kostka orientacji ustawia widok wzdluz kliknietej osi.
         ViewCube.DirectionRequested += direction => View3D.SetViewDirection(direction);
 
-        // Klikniecie w scene zabiera fokus z kontrolek, zeby skroty klawiszowe znowu dzialaly.
         View3D.Focusable = View2D.Focusable = true;
         View3D.PointerPressed += (_, _) => View3D.Focus();
         View2D.PointerPressed += (_, _) => View2D.Focus();
 
-        // Skroty lapiemy w tunelu: inaczej zjada je kontrolka, ktora akurat ma fokus.
         AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
 
         _timer.Tick += OnTick;
@@ -50,7 +44,6 @@ public partial class MainWindow : Window
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
 
-    // Wspolny handler menu Widok i przyciskow trybu widoku (Tag = nazwa ViewMode).
     private void OnViewModeClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel vm && sender is Control { Tag: string tag }
@@ -58,7 +51,6 @@ public partial class MainWindow : Window
         {
             vm.ViewMode = mode;
 
-            // Przycisk przelacza sam siebie - wymus stan zgodny z modelem.
             if (sender is ToggleButton toggle)
                 toggle.IsChecked = true;
         }
@@ -119,8 +111,6 @@ public partial class MainWindow : Window
             AllowMultiple = false,
             FileTypeFilter =
             [
-                // Pierwszy filtr jest domyslny - musi obejmowac tez pcap, inaczej natywne
-                // okno (macOS) szarzy takie pliki, dopoki uzytkownik nie przelaczy filtra.
                 new FilePickerFileType("Chmury punktów i nagrania pcap")
                     { Patterns = PointCloudLoader.SupportedExtensions.Concat([".pcap", ".pcapng"]).Select(e => "*" + e).ToArray() },
                 new FilePickerFileType("Nagranie Velodyne VLP-16 (pcap)") { Patterns = ["*.pcap", "*.pcapng"] },
@@ -207,7 +197,6 @@ public partial class MainWindow : Window
         {
             if (vm.Is3D)
             {
-                // Widok OpenGL nie trafia do RenderTargetBitmap - piksele czyta sam z bufora ramki.
                 View3D.RequestScreenshot((width, height, rgba) => SaveRgbaAsPng(vm, path, width, height, rgba));
             }
             else
@@ -252,7 +241,6 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainViewModel vm) return;
 
-        // Protokol Velodyne zapisuje surowe pakiety do jednego pliku .pcap (jak VeloView).
         if (vm.RecordsRawPackets)
         {
             var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
@@ -276,8 +264,6 @@ public partial class MainWindow : Window
         if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } parent)
             return;
 
-        // Kazde nagranie dostaje wlasny podkatalog, wiec kolejne nagrania
-        // nie nadpisuja poprzedniego.
         string target = Path.Combine(parent, $"nagranie-{DateTime.Now:yyyyMMdd-HHmmss}");
         vm.StartRecording(target);
     }
@@ -322,8 +308,6 @@ public partial class MainWindow : Window
         vm.LiveFaulted += OnLiveFaulted;
     }
 
-    // Chmura przychodzi z watku odbioru UDP, wiec trzeba ja przeniesc na
-    // watek interfejsu - wlasniki widoku nie wolno zmieniac z innego watku.
     private void OnLiveFaulted(string message) =>
         Dispatcher.UIThread.Post(() => _vm?.ApplyLiveFault(message));
 
@@ -336,9 +320,6 @@ public partial class MainWindow : Window
             _timer.IsEnabled = (DataContext as MainViewModel)?.IsPlaying ?? false;
     }
 
-    // Zamkniecie okna nie moze zostawic odbiornika UDP na zywo. Trwajace
-    // nagranie trzeba zakonczyc, inaczej manifest nigdy nie powstanie
-    // i zapisane klatki nie da sie odtworzyc.
     private async void OnClosed(object? sender, EventArgs e)
     {
         _timer.Stop();
@@ -369,10 +350,6 @@ public partial class MainWindow : Window
         View2D.ResetView();
     }
 
-    // Skroty klawiszowe: R - reset widoku, 2 / 3 - tryby widoku, spacja - odtwarzanie,
-    // strzalki - krok klatki, Home/End - pierwsza/ostatnia klatka. W polach tekstowych skroty
-    // nie dzialaja (klawisze trafiaja do wpisywania), a klawisze nawigacji nie przeszkadzaja
-    // listom i suwakom.
     private void OnShortcutKeyDown(object? sender, KeyEventArgs e)
     {
         if (_vm is null || e.KeyModifiers != KeyModifiers.None || e.Source is TextBox)

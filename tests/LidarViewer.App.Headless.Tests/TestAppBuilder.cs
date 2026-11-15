@@ -6,9 +6,6 @@ using LidarViewer.App;
 
 namespace LidarViewer.App.Headless.Tests;
 
-/// <summary>
-/// Uruchamia aplikacje bez ekranu, zeby testy mogly sprawdzic uklad okna.
-/// </summary>
 public static class TestAppBuilder
 {
     public static AppBuilder BuildAvaloniaApp() =>

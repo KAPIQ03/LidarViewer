@@ -4,10 +4,6 @@ namespace LidarViewer.Core.Playback;
 
 public static class CloudMerge
 {
-    /// <summary>
-    /// Skleja chmury w jedna (np. klatka z kilkoma poprzednimi - "trailing frames"). Atrybut obecny
-    /// tylko w czesci chmur dostaje zera w pozostalych. Origin pochodzi z ostatniej chmury.
-    /// </summary>
     public static PointCloud Concatenate(IReadOnlyList<PointCloud> clouds)
     {
         ArgumentNullException.ThrowIfNull(clouds);

@@ -66,7 +66,6 @@ public class ViewCubeTests
     [Fact]
     public void FrontFaceMatchesLookAlong()
     {
-        // Kamera patrzaca wzdluz kierunku sciany widzi ja z przodu - jedna sciana w calosci.
         var camera = new OrbitCamera();
         camera.LookAlong(-Vector3.UnitX);
 

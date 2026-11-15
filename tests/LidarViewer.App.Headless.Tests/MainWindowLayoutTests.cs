@@ -24,8 +24,6 @@ public class MainWindowLayoutTests
         return (window, vm);
     }
 
-    // Pasek narzedzi musi lezec nad panelem filtrow. Wczesniej oba byly
-    // w jednej kolumnie, wiec szeroki pasek live chowal sie pod panelem.
     [AvaloniaFact]
     public void ToolbarStaysAboveFiltersPanel()
     {
@@ -47,8 +45,6 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
-    // Zawartosc paska nie moze wychodzic poza okno - inaczej elementy
-    // znikaja pod panelem filtrow.
     [AvaloniaFact]
     public void ToolbarFitsInsideWindow()
     {
@@ -65,8 +61,6 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
-    // Wiersz live musi zawijac sie do kolejnego wiersza, a nie wychodzic
-    // poza szerokosc okna.
     [AvaloniaFact]
     public void LiveRowWrapsInsideWindow()
     {
@@ -90,8 +84,6 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
-    // Wezsokie okno nie moze byc miejscem, w ktorym wszystko sie nie
-    // mieści - elementy musza sie zawijać na kolejne wiersze.
     [AvaloniaFact]
     public void ToolbarWrapsInNarrowWindow()
     {
@@ -118,7 +110,6 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
-    // Panel filtrow mozna zamknac, zeby nie zaslanial widoku chmury.
     [AvaloniaFact]
     public void ClosingFiltersPanelFreesSpace()    {
         var (window, vm) = ShowWindow();
@@ -135,8 +126,6 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
-    // Przyciski zapisu i nagrywania musza byc w pasku narzedzi i miescic
-    // sie w szerokosci okna.
     [AvaloniaFact]
     public void ExportAndRecordButtonsFitInToolbar()
     {
@@ -159,8 +148,6 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
-    // Przycisk nagrywania pojawia sie dopiero w trybie live, bo bez
-    // strumienia nie ma czego nagrywac.
     [AvaloniaFact]
     public void RecordButtonAppearsOnlyInLiveMode()
     {
@@ -189,8 +176,6 @@ public class MainWindowLayoutTests
         vm.StopLiveCommand.Execute(null);
     }
 
-    // Zrzut okna do pliku - pozwala ocenic wyglad bez uruchamiania
-    // aplikacji na desktopie.
     [AvaloniaFact]
     public void SavesScreenshotOfWindow()
     {
@@ -212,7 +197,6 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
-    // Zrzut okna z wczytana chmura i sekwencja (pasek odtwarzania, tabela, legenda).
     [AvaloniaFact]
     public void SavesScreenshotOfWindowWithData()
     {
@@ -267,7 +251,6 @@ public class MainWindowLayoutTests
         return dir;
     }
 
-    // Pasek odtwarzania: pola numeryczne musza pokazywac numer klatki i zakres, a caly pasek miesci sie w oknie.
     [AvaloniaFact]
     public void PlaybackBarShowsFrameNumbersAndFitsWindow()
     {
@@ -280,10 +263,10 @@ public class MainWindowLayoutTests
 
             var boxes = window.GetVisualDescendants().OfType<NumericUpDown>().ToList();
             Assert.Equal(4, boxes.Count);
-            Assert.Equal(1m, boxes[0].Value);   // numer klatki
-            Assert.Equal(1m, boxes[1].Value);   // poczatek zakresu
-            Assert.Equal(4m, boxes[2].Value);   // koniec zakresu
-            Assert.Equal(0m, boxes[3].Value);   // slad
+            Assert.Equal(1m, boxes[0].Value);
+            Assert.Equal(1m, boxes[1].Value);
+            Assert.Equal(4m, boxes[2].Value);
+            Assert.Equal(0m, boxes[3].Value);
 
             vm.StepForwardCommand.Execute(null);
             Dispatcher.UIThread.RunJobs();
@@ -298,7 +281,6 @@ public class MainWindowLayoutTests
         }
     }
 
-    // Tabela punktow: lista ma tyle elementow, ile punktow, ale tworzy kontrolki tylko dla widocznych wierszy.
     [AvaloniaFact]
     public void PointTableIsVirtualized()
     {
@@ -326,7 +308,6 @@ public class MainWindowLayoutTests
         Assert.Equal(["_Plik", "_Widok", "_Live", "_Narzędzia", "_Pomoc"], headers);
     }
 
-    // Regresja: IsChecked pozycji menu jest domyslnie OneWay, wiec klikniecie nie zmienialo modelu.
     [AvaloniaFact]
     public void MenuCheckItemsWriteBackToViewModel()
     {

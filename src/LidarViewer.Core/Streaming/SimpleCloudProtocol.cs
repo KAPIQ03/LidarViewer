@@ -2,18 +2,6 @@ using System.Buffers.Binary;
 
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Wlasny protokol przesylania chmury punktow po UDP.
-///
-/// Naglowek (10 bajtow):
-///   0..3  magika "LVLR"
-///   4     wersja protokolu
-///   5     flagi (zarezerwowane)
-///   6..9  liczba punktow (uint32, little endian)
-///
-/// Nastepnie dla kazdego punktu 13 bajtow:
-///   x, y, z (float32, little endian), intensywnosc (1 bajt)
-/// </summary>
 public static class SimpleCloudProtocol
 {
     public const int HeaderSize = 10;

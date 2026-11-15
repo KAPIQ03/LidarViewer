@@ -92,7 +92,6 @@ public class ExportAndRecordingTests : IDisposable
         Assert.Equal(2, vm.RecordedFrameCount);
         Assert.Contains("2", vm.RecordInfo);
 
-        // Zakoncz nagranie, zeby watek zapisu nie pisal do katalogu w trakcie jego usuwania.
         await vm.StopRecordingAsync();
     }
 

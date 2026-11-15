@@ -34,9 +34,9 @@ public class SceneGuidesTests
         Assert.Equal(6, guides.AxisVertexCount);
         float[] p = guides.AxisPositions;
         Assert.Equal([1f, 2f, 3f], p[0..3]);
-        Assert.True(p[3] > 1f && p[4] == 2f && p[5] == 3f);   // X
-        Assert.True(p[9] == 1f && p[10] > 2f && p[11] == 3f);  // Y
-        Assert.True(p[15] == 1f && p[16] == 2f && p[17] > 3f); // Z
+        Assert.True(p[3] > 1f && p[4] == 2f && p[5] == 3f);
+        Assert.True(p[9] == 1f && p[10] > 2f && p[11] == 3f);
+        Assert.True(p[15] == 1f && p[16] == 2f && p[17] > 3f);
     }
 
     [Fact]

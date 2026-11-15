@@ -2,9 +2,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Filters;
 
-/// <summary>
-/// Pojedynczy etap pipeline: nazwa, ustawienia filtra i stan wlaczenia.
-/// </summary>
 public sealed class PipelineStage
 {
     public PipelineStage(string name, FilterSettings settings)
@@ -25,10 +22,6 @@ public sealed record StageResult(string Name, bool Enabled, int InputCount, int 
 
 public sealed record PipelineResult(PointCloud Cloud, IReadOnlyList<StageResult> Stages);
 
-/// <summary>
-/// Lista filtrow nakladanych na chmure w kolejnosci. Kazdy etap raportuje
-/// liczbe punktow przed i po filtracji.
-/// </summary>
 public sealed class Pipeline
 {
     private readonly List<PipelineStage> _stages = [];

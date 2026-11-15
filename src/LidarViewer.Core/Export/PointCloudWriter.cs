@@ -2,10 +2,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Export;
 
-/// <summary>
-/// Zapisuje chmure punktow do pliku. Format wybiera po rozszerzeniu, wiec
-/// ten sam kod obsluguje eksport do PLY i do pliku tekstowego.
-/// </summary>
 public static class PointCloudWriter
 {
     private static readonly Dictionary<string, Action<PointCloud, string>> Writers =

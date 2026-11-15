@@ -2,17 +2,8 @@ using System.Numerics;
 
 namespace LidarViewer.Core.Rendering;
 
-/// <summary>
-/// Wybor punktu chmury myszka: znajduje punkt, ktorego rzut na ekran jest najblizej kursora.
-/// </summary>
 public static class PointPicker
 {
-    /// <summary>
-    /// Zwraca indeks punktu najblizszego pozycji (screenX, screenY) w pikselach okna (Y rosnie w dol)
-    /// albo -1, gdy zaden punkt nie lezy w promieniu tolerancePixels. Punkty poza bryla widzenia sa pomijane;
-    /// przy rownej odleglosci wygrywa punkt blizszy kamerze.
-    /// </summary>
-    /// <param name="positions">XYZ w tym samym ukladzie, w ktorym dziala macierz viewProjection.</param>
     public static int Pick(
         float[] positions, Matrix4x4 viewProjection, float screenX, float screenY,
         int viewportWidth, int viewportHeight, float tolerancePixels = 12f)

@@ -2,17 +2,10 @@ using System.Numerics;
 
 namespace LidarViewer.Core.Spatial;
 
-/// <summary>
-/// Plaszczyzna zapisana w postaci n . x + d = 0.
-/// </summary>
 public readonly record struct PlaneModel(Vector3 Normal, float Offset)
 {
     public float DistanceTo(Vector3 point) => MathF.Abs(Vector3.Dot(Normal, point) + Offset);
 
-    /// <summary>
-    /// Plaszczyzna przechodzaca przez trzy punkty. Zwraca false, gdy punkty
-    /// sa wspolliniowe - takiej probki nie da sie uzyc w RANSAC.
-    /// </summary>
     public static bool TryFromThreePoints(Vector3 a, Vector3 b, Vector3 c, out PlaneModel plane)
     {
         Vector3 normal = Vector3.Cross(b - a, c - a);
@@ -28,11 +21,6 @@ public readonly record struct PlaneModel(Vector3 Normal, float Offset)
         return true;
     }
 
-    /// <summary>
-    /// Plaszczyzna dopasowana metoda najmniejszych kwadratow. Normalna to
-    /// wektor wlasny o najmniejszej wartosci wlasnej macierzy kowariancji,
-    /// czyli kierunek o najmniejszym rozrzuceniu punktow.
-    /// </summary>
     public static PlaneModel FitLeastSquares(IReadOnlyList<Vector3> points)
     {
         if (points.Count < 3)
@@ -74,10 +62,6 @@ public readonly record struct PlaneModel(Vector3 Normal, float Offset)
         return new PlaneModel(normal, -Vector3.Dot(normal, centroid));
     }
 
-    /// <summary>
-    /// Jacobiego metoda obrotow dla symetrycznej macierzy 3x3. Zwraca
-    /// wartosci wlasne oraz wektory wlasne w kolumnach.
-    /// </summary>
     private static (double[] values, double[] vectors) Jacobi(double[] matrix)
     {
         double[] a = (double[])matrix.Clone();
@@ -106,7 +90,6 @@ public readonly record struct PlaneModel(Vector3 Normal, float Offset)
                     double c = 1 / Math.Sqrt(1 + t * t);
                     double s = t * c;
 
-                    // Obrot G na plaszczyznie (p, q): A' = G transpozycja A G.
                     double app = a[p * 3 + p];
                     double aqq = a[q * 3 + q];
 

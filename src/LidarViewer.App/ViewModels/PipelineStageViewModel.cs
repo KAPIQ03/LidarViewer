@@ -6,11 +6,6 @@ using LidarViewer.Core.Filters;
 
 namespace LidarViewer.App.ViewModels;
 
-/// <summary>
-/// Etap pipeline wraz z edytowalnymi parametrami. Ustawienia filtra sa
-/// wyliczane z parametrow, dzieki czemu edytor nie musi znac wnetrza
-/// poszczegolnych filtrow.
-/// </summary>
 public sealed partial class PipelineStageViewModel : ObservableObject
 {
     private readonly FilterDescriptor _descriptor;
@@ -28,10 +23,6 @@ public sealed partial class PipelineStageViewModel : ObservableObject
 
     public string Name => _descriptor.Name;
 
-    /// <summary>
-    /// Pozycja etapu na liscie - uzywana przez przyciski przenoszenia
-    /// i usuwania w panelu filtrow.
-    /// </summary>
     public int Index { get; internal set; }
 
     [ObservableProperty]
@@ -47,9 +38,6 @@ public sealed partial class PipelineStageViewModel : ObservableObject
 
     public FilterSettings Settings => _descriptor.Build(_values);
 
-    /// <summary>
-    /// Sygnalizuje, ze etap wymaga ponownego przebudowania pipeline.
-    /// </summary>
     public event Action? Changed;
 
     public void SetValues(IReadOnlyDictionary<string, double> values)

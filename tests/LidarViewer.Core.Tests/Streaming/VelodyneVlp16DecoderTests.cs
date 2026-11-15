@@ -7,10 +7,6 @@ public class VelodyneVlp16DecoderTests
 {
     private readonly VelodyneVlp16Decoder _decoder = new();
 
-    /// <summary>
-    /// Buduje pakiet VLP-16: 12 blokow po 100 B, naglowek banku 0xEEFF,
-    /// azymut w dziesiatych stopnia, dystans w jednostkach 2 mm.
-    /// </summary>
     private static byte[] BuildPacket(int blockCount = 12, ushort? azimuth = null, ushort distance = 1000, byte reflectivity = 77)
     {
         byte[] packet = new byte[VelodyneVlp16Decoder.PacketSize];
@@ -51,7 +47,6 @@ public class VelodyneVlp16DecoderTests
 
         _decoder.TryDecode(packet, out var cloud);
 
-        // 1000 jednostek * 0.002 m = 2 m
         float radius = MathF.Sqrt(
             cloud!.Positions[0] * cloud.Positions[0] +
             cloud.Positions[1] * cloud.Positions[1] +
@@ -67,7 +62,6 @@ public class VelodyneVlp16DecoderTests
 
         _decoder.TryDecode(packet, out var cloud);
 
-        // Laser 0 ma kat pionowy -15 stopni, laser 1 ma +1 stopien.
         float zLaser0 = cloud!.Positions[2];
         float zLaser1 = cloud.Positions[5];
 

@@ -3,10 +3,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Filters;
 
-/// <summary>
-/// Ustawienia pojedynczego filtra. Kazdy filtr ma wlasny rekord, dzieki
-/// czemu dispatcher rozpoznaje go po typie.
-/// </summary>
 public abstract record FilterSettings;
 
 public sealed record ScalarRangeSettings(ScalarKind Kind, float Min, float Max) : FilterSettings;

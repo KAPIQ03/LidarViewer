@@ -18,10 +18,6 @@ namespace LidarViewer.App.ViewModels;
 
 public partial class MainViewModel
 {
-    /// <summary>
-    /// Wczytana sekwencja klatek. null, gdy aplikacja pokazuje pojedynczy
-    /// plik.
-    /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSequence))]
     [NotifyPropertyChangedFor(nameof(AutoFitCamera))]
@@ -38,9 +34,6 @@ public partial class MainViewModel
     [NotifyPropertyChangedFor(nameof(Duration))]
     public partial SequencePlayer? Player { get; set; }
 
-    /// <summary>
-    /// Pozycja na osi czasu w sekundach.
-    /// </summary>
     [ObservableProperty]
     public partial double PositionSeconds { get; set; }
 
@@ -54,10 +47,6 @@ public partial class MainViewModel
         ? string.Empty
         : $"Klatka {Player?.FrameIndex + 1} / {Sequence.FrameCount}";
 
-    /// <summary>
-    /// Czy uzytkownik trzyma suwak osi czasu. Wtedy timer nie rusza pozycji,
-    /// bo inaczej kciuk uciekalby spod kursora.
-    /// </summary>
     public bool IsScrubbing { get; set; }
 
     public IReadOnlyList<PlaybackSpeed> Speeds { get; } =
@@ -75,14 +64,8 @@ public partial class MainViewModel
 
     public IRelayCommand PlayPauseCommand { get; }
 
-    /// <summary>
-    /// Najwiecej wczesniejszych klatek doklejanych do widoku ("trailing frames").
-    /// </summary>
     public const int MaxTrailingFrames = 10;
 
-    /// <summary>
-    /// Ile poprzednich klatek pokazac razem z biezaca (0 - tylko biezaca).
-    /// </summary>
     [ObservableProperty]
     public partial int TrailingFrames { get; set; }
 
@@ -99,9 +82,6 @@ public partial class MainViewModel
             ShowFrame(Player.FrameIndex);
     }
 
-    /// <summary>
-    /// Numer biezacej klatki liczony od 1 (0, gdy nie ma sekwencji). Ustawienie przewija do klatki.
-    /// </summary>
     public int FrameNumber
     {
         get => Player is null ? 0 : Player.FrameIndex + 1;
@@ -117,9 +97,6 @@ public partial class MainViewModel
 
     public int TotalFrames => Sequence?.FrameCount ?? 0;
 
-    /// <summary>
-    /// Pierwsza klatka zakresu odtwarzania (od 1).
-    /// </summary>
     public int RangeStart
     {
         get => Player is null ? 0 : Player.StartFrame + 1;
@@ -133,9 +110,6 @@ public partial class MainViewModel
         }
     }
 
-    /// <summary>
-    /// Ostatnia klatka zakresu odtwarzania (od 1, wlacznie).
-    /// </summary>
     public int RangeEnd
     {
         get => Player is null ? 0 : Player.EndFrame + 1;
@@ -175,9 +149,6 @@ public partial class MainViewModel
         SyncPlaybackState();
     }
 
-    /// <summary>
-    /// Odswieza wlasciwosci zalezne od pozycji i zakresu odtwarzacza po zmianie zrobionej z interfejsu.
-    /// </summary>
     private void SyncPlaybackState()
     {
         if (Player is null)
@@ -200,9 +171,6 @@ public partial class MainViewModel
             || extension.Equals(".pcapng", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Plik pcap z Velodyne jest indeksowany raz, a klatki dekodowane leniwie - bez plikow posrednich.
-    /// </summary>
     private async Task LoadPcapAsync(string path)
     {
         VelodyneCalibration calibration;
@@ -231,10 +199,6 @@ public partial class MainViewModel
         StartPlayback(source);
     }
 
-    /// <summary>
-    /// Zamyka biezaca sekwencje, zeby Play nie odtwarzal wczesniejszego pliku
-    /// po wczytaniu innego zrodla.
-    /// </summary>
     private void CloseSequence()
     {
         if (Player is { } player)
@@ -303,9 +267,6 @@ public partial class MainViewModel
         }
     }
 
-    /// <summary>
-    /// Zaczyna odtwarzanie podanego zrodla klatek od poczatku.
-    /// </summary>
     private void StartPlayback(IFrameSource source)
     {
         try
@@ -353,9 +314,6 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(FrameNumber));
     }
 
-    /// <summary>
-    /// Przesuwa odtwarzanie. Wolane z timera okna.
-    /// </summary>
     public void Advance(TimeSpan delta)
     {
         if (Player is null || !Player.IsPlaying)
@@ -363,8 +321,6 @@ public partial class MainViewModel
 
         Player.Advance(delta);
 
-        // Odtwarzacz zatrzymuje sie sam na koncu sekwencji - bez tego
-        // powiadomienia timer w oknie krecilby sie dalej na prozno.
         if (!Player.IsPlaying)
             OnPropertyChanged(nameof(IsPlaying));
 
@@ -372,10 +328,6 @@ public partial class MainViewModel
             PositionSeconds = Player.PositionSeconds;
     }
 
-    /// <summary>
-    /// Przesuniecie suwaka przez uzytkownika (takze strzalkami) przewija sekwencje od razu.
-    /// Zmiany pochodzace z odtwarzacza maja te sama wartosc co jego pozycja, wiec sa pomijane.
-    /// </summary>
     partial void OnPositionSecondsChanged(double value)
     {
         if (Player is null || Math.Abs(value - Player.PositionSeconds) < 1e-9)

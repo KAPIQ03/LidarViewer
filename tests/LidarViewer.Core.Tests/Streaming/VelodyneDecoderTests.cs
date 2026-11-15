@@ -10,7 +10,6 @@ namespace LidarViewer.Core.Tests.Streaming;
 
 public class VelodyneDecoderTests : TempDirTestBase
 {
-    /// <summary>Pakiet z blokami po 32 kanaly (HDL-32E / HDL-64E).</summary>
     private static byte[] WidePacket(ushort[] bankHeaders, ushort azimuth = 0, ushort distance = 1000)
     {
         byte[] packet = new byte[VelodyneDecoder.PacketSize];
@@ -64,7 +63,6 @@ public class VelodyneDecoderTests : TempDirTestBase
 
         decoder.TryDecode(Vlp16Packet(azimuth: 0), out var cloud);
 
-        // Laser 1 ma +1 stopien, wiec lezy blisko plaszczyzny poziomej; azymut 0 = przod = +Y.
         Assert.True(cloud!.Positions[4] > 1.9f);
         Assert.Equal(0f, cloud.Positions[3], 3);
     }
@@ -74,7 +72,7 @@ public class VelodyneDecoderTests : TempDirTestBase
     {
         var decoder = new VelodyneVlp16Decoder();
 
-        decoder.TryDecode(Vlp16Packet(azimuth: 9000), out var cloud); // 90 stopni
+        decoder.TryDecode(Vlp16Packet(azimuth: 9000), out var cloud);
 
         Assert.True(cloud!.Positions[3] > 1.9f);
         Assert.Equal(0f, cloud.Positions[4], 3);
@@ -155,7 +153,6 @@ public class VelodyneDecoderTests : TempDirTestBase
 
         decoder.TryDecode(WidePacket([VelodyneDecoder.UpperBank], distance: 1000), out var cloud);
 
-        // laser 16 ma kat 0 -> promien = 2 m + 1 m
         int index = 16 * 3;
         float radius = MathF.Sqrt(
             cloud!.Positions[index] * cloud.Positions[index] +
@@ -192,7 +189,7 @@ public class VelodyneDecoderTests : TempDirTestBase
         buffer.Add(cloud!);
         var snapshot = buffer.Snapshot();
 
-        Assert.Equal(12 * 2, filtered.Count); // 2 strzaly x 12 blokow, laser 0
+        Assert.Equal(12 * 2, filtered.Count);
         Assert.All(filtered.LaserId!, id => Assert.Equal(0, id));
         Assert.Equal(filtered.Count, filtered.Azimuth!.Length);
         Assert.Equal(filtered.Count, filtered.Time!.Length);
@@ -213,7 +210,6 @@ public class VelodyneDecoderTests : TempDirTestBase
         Assert.Equal(2, frames.Count);
         Assert.NotNull(frames[0].Cloud.LaserId);
         Assert.Equal(2 * 12 * 32, frames[0].Cloud.Count);
-        // Drugi pakiet pierwszej klatki zaczyna sie 50 ms po jej poczatku.
         Assert.True(frames[0].Cloud.Time!.Max() >= 0.05f);
         Assert.Equal(0.10, frames[1].Time, 6);
     }

@@ -4,13 +4,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Export;
 
-/// <summary>
-/// Zapisuje chmure punktow do pliku tekstowego z kolumnami x, y, z
-/// i opcjonalnie intensity. Format czyta CsvReader.
-///
-/// Zapisuje wspolrzedne swiata, czyli pozycje plus Origin - tak samo jak
-/// PlyWriter, zeby eksport nie zmienial geometrii chmury.
-/// </summary>
 public static class CsvWriter
 {
     public static void Write(string path, PointCloud cloud)

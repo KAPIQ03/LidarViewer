@@ -30,8 +30,6 @@ public sealed class FloatTextConverter : IValueConverter
         if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out result))
             return result;
 
-        // Ostatnia proba: przecinek jako separator dziesietny. System z kultura
-        // angielska odrzucilby "12,5", a uzytkownik pisze po polsku.
         if (text.Contains(','))
         {
             string dot = text.Replace(',', '.');
@@ -39,8 +37,6 @@ public sealed class FloatTextConverter : IValueConverter
                 return result;
         }
 
-        // Niepoprawna wartosc nie moze trafic do modelu - inaczej pole
-        // po cichu cofnie sie do poprzedniej wartosci.
         return BindingOperations.DoNothing;
     }
 }

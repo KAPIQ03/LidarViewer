@@ -24,7 +24,6 @@ public class PcapReaderTests : TempDirTestBase
         return packet;
     }
 
-    /// <summary>Ethernet + IPv4 + UDP z podanym ladunkiem.</summary>
     private static byte[] EthernetFrame(byte[] payload, byte protocol = 17, ushort fragment = 0)
     {
         byte[] frame = new byte[14 + 20 + 8 + payload.Length];
@@ -52,9 +51,9 @@ public class PcapReaderTests : TempDirTestBase
         }
 
         U32(nano ? 0xA1B23C4Du : 0xA1B2C3D4u);
-        U32(0x00040002); // wersja (zapis i tak nieistotny dla czytnika)
+        U32(0x00040002);
         U32(0); U32(0); U32(65535);
-        U32(1); // Ethernet
+        U32(1);
 
         foreach (var (time, frame) in records)
         {
@@ -88,7 +87,7 @@ public class PcapReaderTests : TempDirTestBase
         Block(0x0A0D0D0A, shb);
 
         byte[] idb = new byte[8];
-        BinaryPrimitives.WriteUInt16LittleEndian(idb, 1); // Ethernet, bez opcji -> mikrosekundy
+        BinaryPrimitives.WriteUInt16LittleEndian(idb, 1);
         Block(1, idb);
 
         foreach (var (ticks, frame) in records)
@@ -179,7 +178,6 @@ public class PcapReaderTests : TempDirTestBase
     [Fact]
     public void ImporterSplitsFramesAtAzimuthWrap()
     {
-        // Dwa obroty: azymut rosnie 0 -> 200, potem wraca do 0 -> 200.
         var records = new List<(double, byte[])>();
         double t = 100;
         foreach (ushort az in new ushort[] { 0, 100, 200, 0, 100, 200 })
@@ -187,7 +185,7 @@ public class PcapReaderTests : TempDirTestBase
             records.Add((t, EthernetFrame(VelodynePacket(az))));
             t += 0.05;
         }
-        records.Insert(1, (100.01, EthernetFrame(new byte[512]))); // pakiet pozycji - pomijany
+        records.Insert(1, (100.01, EthernetFrame(new byte[512])));
         string path = Write("g.pcap", ClassicPcap(records));
 
         var frames = VelodynePcapImporter.ReadFrames(path).ToList();

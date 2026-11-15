@@ -2,10 +2,6 @@ using System.Numerics;
 
 namespace LidarViewer.Core.Rendering;
 
-/// <summary>
-/// Geometria pomocnicza sceny 3D: osie ukladu i kolowa siatka pomiarowa (jak w VeloView). Zwraca odcinki
-/// (po 2 wierzcholki) z kolorami RGBA, gotowe do narysowania jako GL_LINES.
-/// </summary>
 public sealed class SceneGuides
 {
     private const int MaxRings = 40;
@@ -22,12 +18,10 @@ public sealed class SceneGuides
         RingCount = ringCount;
     }
 
-    /// <summary>XYZ wierzcholkow osi (6 wierzcholkow: X, Y, Z).</summary>
     public float[] AxisPositions { get; }
 
     public byte[] AxisColors { get; }
 
-    /// <summary>XYZ wierzcholkow siatki (pierscienie i promienie w plaszczyznie XY).</summary>
     public float[] GridPositions { get; }
 
     public byte[] GridColors { get; }
@@ -36,14 +30,10 @@ public sealed class SceneGuides
 
     public int GridVertexCount => GridPositions.Length / 3;
 
-    /// <summary>Odstep miedzy pierscieniami w metrach.</summary>
     public float RingStep { get; }
 
     public int RingCount { get; }
 
-    /// <summary>
-    /// Buduje osie i siatke wokol origin dla sceny o podanym promieniu (obejmuje cala chmure).
-    /// </summary>
     public static SceneGuides Build(Vector3 origin, float sceneRadius)
     {
         float radius = Math.Max(sceneRadius, 1e-3f);
@@ -51,7 +41,6 @@ public sealed class SceneGuides
         int rings = Math.Clamp((int)MathF.Ceiling(radius / step), 1, MaxRings);
         float outer = rings * step;
 
-        // Osie: X czerwona, Y zielona, Z niebieska, dlugosc ok. jednego odstepu siatki (min. 1/10 sceny).
         float axisLength = Math.Max(step, radius * 0.1f);
         float[] axisPositions =
         [
@@ -94,9 +83,6 @@ public sealed class SceneGuides
         return new SceneGuides(axisPositions, axisColors, positions.ToArray(), gridColors, step, rings);
     }
 
-    /// <summary>
-    /// Odstep siatki z szeregu 1-2-5 x 10^n, tak by na promieniu miescilo sie okolo 5-10 pierscieni.
-    /// </summary>
     public static float NiceStep(float sceneRadius)
     {
         float target = Math.Max(sceneRadius, 1e-3f) / 6f;

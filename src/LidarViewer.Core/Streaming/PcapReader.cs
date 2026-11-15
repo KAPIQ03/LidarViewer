@@ -2,21 +2,8 @@ using System.Buffers.Binary;
 
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Pakiet UDP wyciagniety z pliku pcap - czas przechwycenia w sekundach
-/// (od epoki Uniksa) i dane datagramu bez naglowkow Ethernet/IP/UDP.
-/// Offset to polozenie ladunku w pliku (do pozniejszego odczytu bez skanowania), -1 gdy nieznane.
-/// </summary>
 public readonly record struct PcapPacket(double Time, byte[] Payload, long Offset = -1);
 
-/// <summary>
-/// Czytnik plikow przechwytywania sieciowego: klasyczny pcap (mikro- i nanosekundy,
-/// oba porzadki bajtow) oraz pcapng. Zwraca tylko niefragmentowane datagramy UDP po IPv4.
-///
-/// Obslugiwane warstwy lacza: Ethernet (takze VLAN), Linux cooked (SLL),
-/// surowy IPv4 i BSD loopback. Pakiety innych typow sa pomijane.
-/// W pcapng pomijane sa uproszczone bloki pakietow (SPB) - nie maja znacznika czasu.
-/// </summary>
 public static class PcapReader
 {
     private const int MaxCapturedLength = 1 << 28;
@@ -58,7 +45,6 @@ public static class PcapReader
         if (!TryReadExactly(stream, header))
             throw new InvalidDataException("Nagłówek pcap jest ucięty.");
 
-        // Starsze 4 bity pola to rozszerzenia (FCS) - nie wplywaja na typ lacza.
         int linkType = (int)(ReadUInt32(header, 16, bigEndian) & 0x0FFFFFFF);
         double divisor = nanoseconds ? 1e9 : 1e6;
 
@@ -73,7 +59,7 @@ public static class PcapReader
             long dataOffset = stream.Position;
             byte[] data = new byte[captured];
             if (!TryReadExactly(stream, data))
-                yield break; // ucieta koncowka przechwytywania
+                yield break;
 
             if (TryExtractUdp(data, linkType, time, dataOffset, out PcapPacket packet))
                 yield return packet;
@@ -82,7 +68,6 @@ public static class PcapReader
 
     private static IEnumerable<PcapPacket> ReadPcapNg(Stream stream)
     {
-        // Typ bloku (SHB) juz przeczytany; dalej: dlugosc bloku i jego tresc.
         bool bigEndian = false;
         var interfaces = new List<(int LinkType, double Resolution)>();
         byte[] blockHeader = new byte[8];
@@ -98,7 +83,7 @@ public static class PcapReader
                 if (!TryReadExactly(stream, blockHeader.AsSpan(4, 4)))
                     throw new InvalidDataException("Nagłówek pcapng jest ucięty.");
                 type = 0x0A0D0D0A;
-                totalLength = 0; // dlugosc zalezy od porzadku bajtow - liczona nizej po BOM
+                totalLength = 0;
             }
             else
             {
@@ -110,7 +95,6 @@ public static class PcapReader
 
             if (type == 0x0A0D0D0A)
             {
-                // Porzadek bajtow sekcji wynika z "byte-order magic" w tresci bloku.
                 byte[] bom = new byte[4];
                 if (!TryReadExactly(stream, bom))
                     yield break;
@@ -136,7 +120,7 @@ public static class PcapReader
             if (!TryReadExactly(stream, body))
                 yield break;
 
-            int bodyLength = body.Length - 4; // ostatnie 4 bajty to powtorzona dlugosc bloku
+            int bodyLength = body.Length - 4;
 
             if (type == 1 && bodyLength >= 8)
             {
@@ -162,10 +146,6 @@ public static class PcapReader
         }
     }
 
-    /// <summary>
-    /// Opcja if_tsresol (kod 9) w bloku opisu interfejsu: bit 7 = potega 2, inaczej potega 10.
-    /// Domyslnie mikrosekundy.
-    /// </summary>
     private static double ReadResolution(byte[] body, int bodyLength, bool bigEndian)
     {
         int offset = 8;
@@ -247,7 +227,6 @@ public static class PcapReader
         if (headerLength < 20 || data[ip + 9] != 17)
             return false;
 
-        // Fragmenty IP (flaga MF albo przesuniecie) nie niosa kompletnego datagramu UDP.
         if ((ReadUInt16(data, ip + 6, bigEndian: true) & 0x3FFF) != 0)
             return false;
 
@@ -273,10 +252,6 @@ public static class PcapReader
             ? BinaryPrimitives.ReadUInt16BigEndian(buffer.AsSpan(offset))
             : BinaryPrimitives.ReadUInt16LittleEndian(buffer.AsSpan(offset));
 
-    /// <summary>
-    /// Czyta dokladnie tyle bajtow, ile zmiesci bufor. False, gdy strumien
-    /// skonczyl sie wczesniej (takze przy zerowej liczbie bajtow).
-    /// </summary>
     private static bool TryReadExactly(Stream stream, Span<byte> buffer)
     {
         int total = 0;

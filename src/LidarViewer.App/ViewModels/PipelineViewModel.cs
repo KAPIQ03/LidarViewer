@@ -11,10 +11,6 @@ using CoreStage = LidarViewer.Core.Filters.PipelineStage;
 
 namespace LidarViewer.App.ViewModels;
 
-/// <summary>
-/// Pipeline filtrow w aplikacji. Lista etapow jest zrodlem danych dla
-/// panelu filtrow, a wynik ostatniego przebiegu trafia do widoku chmury.
-/// </summary>
 public sealed partial class PipelineViewModel : ViewModelBase
 {
     [ObservableProperty]
@@ -60,10 +56,6 @@ public sealed partial class PipelineViewModel : ViewModelBase
         SelectedAvailableFilter = FilterCatalog.All.FirstOrDefault();
     }
 
-    /// <summary>
-    /// Przebudowuje pipeline od nowa i aktualizuje liczniki punktow
-    /// przy kazdym etapie.
-    /// </summary>
     public void Run()
     {
         if (Source is null)
@@ -87,10 +79,6 @@ public sealed partial class PipelineViewModel : ViewModelBase
         Output = result.Cloud;
     }
 
-    /// <summary>
-    /// Czysci liste etapow. Uzywane przy wczytaniu nowego pliku - filtry
-    /// dostrojone dla jednej chmury nie maja sensu dla innej.
-    /// </summary>
     public void Reset()
     {
         foreach (PipelineStageViewModel stage in Stages)
@@ -115,7 +103,6 @@ public sealed partial class PipelineViewModel : ViewModelBase
         Stages.Add(stage);
         RefreshIndexes();
 
-        // Wybranie etapu otwiera jego edytor parametrow.
         SelectedStage = stage;
         Run();
     }

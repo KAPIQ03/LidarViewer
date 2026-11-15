@@ -2,10 +2,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Playback;
 
-/// <summary>
-/// Maly cache LRU klatek (ostatnio uzyte zostaja). Bezpieczny watkowo; wczytanie klatki odbywa sie
-/// poza blokada, wiec dwa watki moga rownolegle wczytac te sama klatke - wygrywa pierwsza zapisana.
-/// </summary>
 internal sealed class FrameCache
 {
     private readonly int _capacity;

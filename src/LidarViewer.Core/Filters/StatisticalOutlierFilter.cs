@@ -19,9 +19,6 @@ public static class StatisticalOutlierFilter
         var tree = new KdTree(cloud.Positions, count);
         var meanDistances = new double[count];
 
-        // Drzewo jest tylko do odczytu podczas wyszukiwania, a wynik dla
-        // punktu zalezy wylacznie od jego sasiadow - obliczenia dla roznych
-        // punktow sa niezalezne i daja sie wykonac rownolegle.
         Parallel.For(
             0,
             count,
@@ -36,11 +33,6 @@ public static class StatisticalOutlierFilter
         double sum = 0;
         for (int i = 0; i < count; i++) sum += meanDistances[i];
 
-        // Punkt jest odosobniony, gdy jego otoczenie jest rzadsze niz przecietna
-        // chmura: srednia odleglosc do sasiadow przekracza prog razy srednia
-        // odleglosc w calej chmurze. Kryterium odnosi sie do gestosci, wiec
-        // nie zalezy od jednostek - chmura w metrach i w milimetrach daje ten
-        // sam wynik.
         double average = sum / count;
         if (average <= 0)
             return KeepAll(cloud);

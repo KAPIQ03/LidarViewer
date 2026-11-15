@@ -10,19 +10,10 @@ public sealed class PointCloud
 
     public int[]? Category { get; }
 
-    /// <summary>
-    /// Numer lasera (kanalu) czujnika dla kazdego punktu. null, gdy zrodlo go nie zna.
-    /// </summary>
     public byte[]? LaserId { get; init; }
 
-    /// <summary>
-    /// Azymut czujnika w stopniach (0-360) w chwili pomiaru punktu.
-    /// </summary>
     public float[]? Azimuth { get; init; }
 
-    /// <summary>
-    /// Czas pomiaru w sekundach wzgledem poczatku chmury (klatki).
-    /// </summary>
     public float[]? Time { get; init; }
 
     public (double X, double Y, double Z) Origin { get; init; }
@@ -144,10 +135,6 @@ public sealed class PointCloud
         return valid == Count ? this : Take(keep, valid);
     }
 
-    /// <summary>
-    /// Nowa chmura z punktow oznaczonych w keep (kept = ich liczba). Przenosi wszystkie atrybuty
-    /// punktow oraz Origin - jedyne miejsce, ktore trzeba rozszerzyc przy nowym atrybucie.
-    /// </summary>
     public PointCloud Take(bool[] keep, int kept)
     {
         ArgumentNullException.ThrowIfNull(keep);

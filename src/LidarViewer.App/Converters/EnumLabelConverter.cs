@@ -6,10 +6,6 @@ using Avalonia.Data.Converters;
 
 namespace LidarViewer.App.Converters;
 
-/// <summary>
-/// Polskie etykiety dla wartosci enumow pokazywanych w listach rozwijanych (nazwy w kodzie
-/// zostaja angielskie). Nieznana wartosc jest wyswietlana pod nazwa enuma.
-/// </summary>
 public sealed class EnumLabelConverter : IValueConverter
 {
     private static readonly Dictionary<string, string> Labels = new()

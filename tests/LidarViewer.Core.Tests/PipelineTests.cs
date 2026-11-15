@@ -9,8 +9,6 @@ public class PipelineTests
     [Fact]
     public void RunsStagesInOrder()
     {
-        // Filtr statystyczny liczy srednia odleglosc wzgledem aktualnej liczby
-        // punktow, wiec kolejnosc etapow zmienia wynik.
         var cloud = new PointCloud([0f, 0f, 0f, 0f, 0f, 0.1f, 10f, 0f, 0f]);
         var outlier = new PipelineStage("outlier", new StatisticalOutlierSettings(1, 0.5f));
         var box = new PipelineStage("box", new BoxCropSettings(new Vector3(1f, -10f, -10f), new Vector3(20f, 10f, 10f)));

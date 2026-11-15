@@ -11,8 +11,6 @@ public class GroundRemovalFilterTests
         for (int i = 0; i < ground; i++)
             positions.AddRange([(i % 10) * 0.5f, (i / 10) * 0.5f, 0f]);
 
-        // Gorna warstwa jest przesunieta, zeby nie pokrywala sie dokladnie
-        // z podlozem - inaczej obie plaszczyzny maja tyle samo inlierow.
         for (int i = 0; i < upper; i++)
             positions.AddRange([(i % 10) * 0.5f + 0.25f, (i / 10) * 0.5f + 0.25f, gap]);
 

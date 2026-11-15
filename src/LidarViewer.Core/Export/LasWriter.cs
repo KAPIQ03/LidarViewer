@@ -4,11 +4,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Export;
 
-/// <summary>
-/// Zapisuje chmure do pliku LAS 1.2, format punktu 0 (20 B): X, Y, Z jako liczby calkowite ze skala 1 mm,
-/// intensywnosc (uint16) i klasyfikacja z Category. Wspolrzedne swiata (pozycja + Origin); przesuniecie
-/// ukladu to minimum chmury, wiec zakres liczb calkowitych wystarcza dla scen do ok. 2 tys. km.
-/// </summary>
 public static class LasWriter
 {
     private const int HeaderSize = 227;
@@ -62,7 +57,7 @@ public static class LasWriter
         header[104] = 0;
         BinaryPrimitives.WriteUInt16LittleEndian(header.AsSpan(105), RecordLength);
         BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(107), (uint)count);
-        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(111), (uint)count); // punkty 1. zwrotu
+        BinaryPrimitives.WriteUInt32LittleEndian(header.AsSpan(111), (uint)count);
         BinaryPrimitives.WriteDoubleLittleEndian(header.AsSpan(131), Scale);
         BinaryPrimitives.WriteDoubleLittleEndian(header.AsSpan(139), Scale);
         BinaryPrimitives.WriteDoubleLittleEndian(header.AsSpan(147), Scale);
@@ -92,7 +87,7 @@ public static class LasWriter
                 BinaryPrimitives.WriteInt32LittleEndian(record[8..], (int)Math.Round((cloud.Positions[p + 2] + oz - minZ) / Scale));
                 if (cloud.Intensity is not null)
                     BinaryPrimitives.WriteUInt16LittleEndian(record[12..], cloud.Intensity[written + i]);
-                record[14] = 0x09; // numer zwrotu 1 z 1
+                record[14] = 0x09;
                 if (cloud.Category is not null)
                     record[15] = (byte)(cloud.Category[written + i] & 0x1F);
             }

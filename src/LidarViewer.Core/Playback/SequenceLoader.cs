@@ -2,10 +2,6 @@ using System.Text.Json;
 
 namespace LidarViewer.Core.Playback;
 
-/// <summary>
-/// Wczytuje sekwencje z katalogu. Manifest lezy w pliku sequence.json,
-/// klatki to pliki w tym samym katalogu.
-/// </summary>
 public static class SequenceLoader
 {
     public const string ManifestFileName = "sequence.json";

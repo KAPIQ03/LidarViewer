@@ -2,9 +2,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Filters;
 
-/// <summary>
-/// Dispatcher wywolujacy wlasciwy filtr dla zadanych ustawien.
-/// </summary>
 public static class CloudFilters
 {
     public static PointCloud Apply(PointCloud cloud, FilterSettings settings)

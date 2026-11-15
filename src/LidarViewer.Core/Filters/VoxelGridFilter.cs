@@ -87,7 +87,6 @@ public static class VoxelGridFilter
             if (time is not null) time[slot] = times[slot];
         }
 
-        // Atrybuty niezwiazane z pozycja bierzemy z pierwszego punktu woksela.
         return new PointCloud(positions, intensity, category)
         {
             Origin = cloud.Origin,

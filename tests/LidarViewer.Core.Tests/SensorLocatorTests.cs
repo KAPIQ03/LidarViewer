@@ -32,7 +32,6 @@ public class SensorLocatorTests
             LasWriter.Write(path, Ring());
             PointCloud loaded = PointCloudLoader.Read(path);
 
-            // Wczytana chmura ma przesuniety uklad (Origin), ale czujnik nadal jest w srodku pierscienia.
             Vector3 sensor = SensorLocator.Locate(loaded)!.Value;
             Assert.True(Vector3.Distance(sensor, loaded.Center) < 0.01f);
         }
@@ -45,7 +44,6 @@ public class SensorLocatorTests
     [Fact]
     public void LasRoundTripKeepsPointsRelativeToSensor()
     {
-        // Chmura niesymetryczna wzgledem czujnika (jak realne nagranie z jedna sciana).
         float[] original = [2f, 3f, 1f, 30f, 40f, 2f, -1f, 25f, 0.5f, 15f, -2f, 3f];
         string path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".las");
         try

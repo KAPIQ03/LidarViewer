@@ -31,7 +31,6 @@ public class PcapFrameSourceTests : TempDirTestBase
         return frame;
     }
 
-    /// <summary>Trzy obroty po dwa pakiety; kazdy obrot ma inny dystans, wiec widac, czy klatka zostala odczytana z wlasciwego miejsca.</summary>
     private static List<(double Time, byte[] Payload)> ThreeRevolutions() =>
     [
         (100.00, Vlp16Packet(0, 500)), (100.05, Vlp16Packet(1800, 500)),
@@ -121,10 +120,9 @@ public class PcapFrameSourceTests : TempDirTestBase
         Assert.Equal(0.1, source.Times[1], 6);
         Assert.Equal(0.2, source.Duration, 6);
 
-        // Odczyt w odwrotnej kolejnosci - dostep losowy dziala bez skanowania od poczatku.
-        Assert.Equal(3f, Radius(source.LoadFrame(2), 0), 3);   // 1500 * 2 mm
-        Assert.Equal(1f, Radius(source.LoadFrame(0), 0), 3);   // 500 * 2 mm
-        Assert.Equal(2f, Radius(source.LoadFrame(1), 0), 3);   // 1000 * 2 mm
+        Assert.Equal(3f, Radius(source.LoadFrame(2), 0), 3);
+        Assert.Equal(1f, Radius(source.LoadFrame(0), 0), 3);
+        Assert.Equal(2f, Radius(source.LoadFrame(1), 0), 3);
         Assert.Equal(2 * 12 * 32, source.LoadFrame(1).Count);
     }
 
@@ -149,7 +147,7 @@ public class PcapFrameSourceTests : TempDirTestBase
         Assert.NotNull(cloud.LaserId);
         Assert.NotNull(cloud.Azimuth);
         Assert.Equal(cloud.Count, cloud.Time!.Length);
-        Assert.True(cloud.Time.Max() >= 0.05f); // drugi pakiet jest 50 ms po pierwszym
+        Assert.True(cloud.Time.Max() >= 0.05f);
     }
 
     [Fact]

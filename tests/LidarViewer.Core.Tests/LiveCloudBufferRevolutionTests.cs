@@ -5,7 +5,6 @@ namespace LidarViewer.Core.Tests;
 
 public class LiveCloudBufferRevolutionTests
 {
-    // Chmura z jednym punktem na kazdy podany azymut; X = azymut, zeby latwo sprawdzic zawartosc.
     private static PointCloud Packet(params float[] azimuths)
     {
         var positions = new float[azimuths.Length * 3];
@@ -20,8 +19,8 @@ public class LiveCloudBufferRevolutionTests
         var buffer = new LiveCloudBuffer(1000, byRevolution: true);
 
         buffer.Add(Packet(10, 20, 30));
-        buffer.Add(Packet(340, 350));      // koniec obrotu 1
-        buffer.Add(Packet(5, 15));         // poczatek obrotu 2 (przejscie przez 360)
+        buffer.Add(Packet(340, 350));
+        buffer.Add(Packet(5, 15));
 
         PointCloud snapshot = buffer.Snapshot();
 
@@ -34,7 +33,7 @@ public class LiveCloudBufferRevolutionTests
         var buffer = new LiveCloudBuffer(1000, byRevolution: true);
 
         buffer.Add(Packet(100, 200, 300));
-        buffer.Add(Packet(350, 359, 2, 6));   // 360 przypada w srodku pakietu
+        buffer.Add(Packet(350, 359, 2, 6));
 
         Assert.Equal([100f, 200f, 300f, 350f, 359f], buffer.Snapshot().Azimuth);
     }
@@ -46,9 +45,9 @@ public class LiveCloudBufferRevolutionTests
 
         buffer.Add(Packet(10, 200));
         buffer.Add(Packet(350));
-        buffer.Add(Packet(20, 180));   // wrap po 350 -> obrot 1 gotowy
+        buffer.Add(Packet(20, 180));
         buffer.Add(Packet(340));
-        buffer.Add(Packet(10));        // wrap po 340 -> obrot 2 gotowy
+        buffer.Add(Packet(10));
 
         Assert.Equal([20f, 180f, 340f], buffer.Snapshot().Azimuth);
     }

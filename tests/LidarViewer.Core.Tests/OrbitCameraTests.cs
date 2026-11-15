@@ -18,7 +18,7 @@ public class OrbitCameraTests
     public void Position_FollowsYawAndPitch()
     {
         var cam = new OrbitCamera { Yaw = 0, Pitch = 0 };
-        cam.FitTo(new Vector3(1, 2, 3), 4f); // Distance = 10
+        cam.FitTo(new Vector3(1, 2, 3), 4f);
 
         AssertNear(new Vector3(11, 2, 3), cam.Position);
 
@@ -180,7 +180,7 @@ public class OrbitCameraTests
 
         Assert.True(cam.Position.Z > 0);
         Assert.Equal(OrbitCamera.MaxPitch, cam.Pitch, 4);
-        Assert.Equal(1f, cam.Yaw, 4); // kierunek obrotu zostaje
+        Assert.Equal(1f, cam.Yaw, 4);
     }
 
     [Fact]

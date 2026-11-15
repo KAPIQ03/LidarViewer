@@ -32,10 +32,6 @@ public sealed record FilterDescriptor(
     IReadOnlyList<FilterParameterSpec> Parameters,
     Func<IReadOnlyDictionary<string, double>, FilterSettings> Build);
 
-/// <summary>
-/// Opis wszystkich filtrow dostepnych w aplikacji: identyfikator, nazwa
-/// wyswietlana, domyslne ustawienia i parametry do edycji.
-/// </summary>
 public static class FilterCatalog
 {
     private static readonly string[] ScalarNames = ["Intensity", "Distance", "Height", "LaserId", "Azimuth", "Time"];

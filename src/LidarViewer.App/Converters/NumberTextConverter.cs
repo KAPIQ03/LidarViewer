@@ -5,10 +5,6 @@ using Avalonia.Data.Converters;
 
 namespace LidarViewer.App.Converters;
 
-/// <summary>
-/// Zamienia wartosc typu double na tekst i odwrotnie. Uzywany w edytorze
-/// parametrow filtrow, gdzie wartosci sa typu double.
-/// </summary>
 public sealed class NumberTextConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
@@ -34,8 +30,6 @@ public sealed class NumberTextConverter : IValueConverter
         if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out result))
             return result;
 
-        // Przecinek jako separator dziesietny - system z kultura angielska
-        // odrzucilby "12,5", a uzytkownik pisze po polsku.
         if (text.Contains(','))
         {
             string dot = text.Replace(',', '.');
@@ -43,8 +37,6 @@ public sealed class NumberTextConverter : IValueConverter
                 return result;
         }
 
-        // Niepoprawna wartosc nie moze trafic do modelu - pole cofnie sie
-        // do poprzedniej wartosci zamiast przyjac bledna liczbe.
         return BindingOperations.DoNothing;
     }
 }

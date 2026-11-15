@@ -2,12 +2,6 @@ using System.Buffers.Binary;
 
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Zapisuje datagramy UDP do klasycznego pliku pcap (LINKTYPE_ETHERNET, mikrosekundy, little endian),
-/// ktory otwieraja Wireshark, VeloView i <see cref="PcapReader"/>. Kazdy ladunek dostaje syntetyczne
-/// naglowki Ethernet/IPv4/UDP z poprawna suma kontrolna IP - tak samo robi VeloView przy nagrywaniu.
-/// Zapis jest bezpieczny watkowo.
-/// </summary>
 public sealed class PcapWriter : IDisposable
 {
     private const int EthernetHeader = 14;
@@ -15,8 +9,8 @@ public sealed class PcapWriter : IDisposable
     private const int UdpHeader = 8;
     private const int MaxPayload = 65535 - IpHeader - UdpHeader;
 
-    private static readonly byte[] SourceAddress = [192, 168, 1, 201];       // typowy adres czujnika Velodyne
-    private static readonly byte[] DestinationAddress = [255, 255, 255, 255]; // rozgloszenie
+    private static readonly byte[] SourceAddress = [192, 168, 1, 201];
+    private static readonly byte[] DestinationAddress = [255, 255, 255, 255];
 
     private readonly FileStream _stream;
     private readonly object _gate = new();
@@ -40,18 +34,15 @@ public sealed class PcapWriter : IDisposable
 
         Span<byte> header = stackalloc byte[24];
         BinaryPrimitives.WriteUInt32LittleEndian(header, 0xA1B2C3D4);
-        BinaryPrimitives.WriteUInt16LittleEndian(header[4..], 2);   // wersja 2.4
+        BinaryPrimitives.WriteUInt16LittleEndian(header[4..], 2);
         BinaryPrimitives.WriteUInt16LittleEndian(header[6..], 4);
-        BinaryPrimitives.WriteUInt32LittleEndian(header[16..], 65535); // snaplen
-        BinaryPrimitives.WriteUInt32LittleEndian(header[20..], 1);     // Ethernet
+        BinaryPrimitives.WriteUInt32LittleEndian(header[16..], 65535);
+        BinaryPrimitives.WriteUInt32LittleEndian(header[20..], 1);
         _stream.Write(header);
     }
 
     public long PacketCount => Interlocked.Read(ref _packetCount);
 
-    /// <summary>
-    /// Dopisuje datagram. Czas to chwila odbioru (UTC).
-    /// </summary>
     public void Write(ReadOnlySpan<byte> payload, DateTimeOffset time)
     {
         if (payload.Length > MaxPayload)
@@ -67,16 +58,16 @@ public sealed class PcapWriter : IDisposable
         BinaryPrimitives.WriteUInt32LittleEndian(record.AsSpan(12), (uint)length);
 
         Span<byte> frame = record.AsSpan(16);
-        frame[..6].Fill(0xFF);                                  // MAC docelowy: rozgloszenie
-        frame[6..12].Clear();                                   // MAC zrodlowy: zera
+        frame[..6].Fill(0xFF);
+        frame[6..12].Clear();
         BinaryPrimitives.WriteUInt16BigEndian(frame[12..], 0x0800);
 
         Span<byte> ip = frame[EthernetHeader..];
         ip[0] = 0x45;
         BinaryPrimitives.WriteUInt16BigEndian(ip[2..], (ushort)(IpHeader + UdpHeader + payload.Length));
-        BinaryPrimitives.WriteUInt16BigEndian(ip[6..], 0x4000); // Don't Fragment
-        ip[8] = 64;                                             // TTL
-        ip[9] = 17;                                             // UDP
+        BinaryPrimitives.WriteUInt16BigEndian(ip[6..], 0x4000);
+        ip[8] = 64;
+        ip[9] = 17;
         SourceAddress.CopyTo(ip[12..]);
         DestinationAddress.CopyTo(ip[16..]);
         BinaryPrimitives.WriteUInt16BigEndian(ip[10..], Checksum(ip[..IpHeader]));

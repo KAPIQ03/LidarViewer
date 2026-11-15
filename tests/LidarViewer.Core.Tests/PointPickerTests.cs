@@ -8,7 +8,7 @@ public class PointPickerTests
     private static OrbitCamera Camera()
     {
         var cam = new OrbitCamera { Yaw = 0, Pitch = 0 };
-        cam.FitTo(Vector3.Zero, 10f); // kamera na +X, patrzy na srodek
+        cam.FitTo(Vector3.Zero, 10f);
         return cam;
     }
 
@@ -47,7 +47,6 @@ public class PointPickerTests
     public void SkipsPointsBehindCamera()
     {
         var cam = Camera();
-        // Kamera stoi na +X (odleglosc 25), wiec punkt na x=100 jest za nia.
         float[] points = [100, 0, 0];
 
         int picked = PointPicker.Pick(points, cam.ViewProjection((float)W / H), W / 2f, H / 2f, W, H, 1000);
@@ -59,7 +58,6 @@ public class PointPickerTests
     public void OnTieNearerPointWins()
     {
         var cam = Camera();
-        // Dwa punkty w jednej linii wzroku: x=0 (dalej) i x=5 (blizej kamery stojacej na +X).
         float[] points = [0, 0, 0, 5, 0, 0];
         var (x, y) = ToScreen(cam, new Vector3(0, 0, 0));
 

@@ -44,8 +44,6 @@ public static class CloudColors
         var ramp = new ColorRamp(settings.Map, settings.Min, settings.Max);
         var values = attribute.Values;
 
-        // Tablica atrybutu moze byc krotsza niz liczba punktow (uszkodzony plik),
-        // wiec nie wolno indeksowac jej poza zakresem.
         int colored = Math.Min(count, values.Length);
         for (int i = 0; i < colored; i++)
         {

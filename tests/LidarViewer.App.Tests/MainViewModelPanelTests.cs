@@ -4,8 +4,6 @@ namespace LidarViewer.App.Tests;
 
 public class MainViewModelPanelTests
 {
-    // Panel filtrow jest otwarty na starcie, ale uzytkownik moze go
-    // zamknac, zeby nie zaslanial widoku chmury.
     [Fact]
     public void FiltersPanelStartsOpen()
     {
@@ -14,8 +12,6 @@ public class MainViewModelPanelTests
         Assert.True(vm.IsFiltersPanelOpen);
     }
 
-    // Okno diagnostyki zaslanialo dolna czesc widoku, wiec startuje
-    // zamkniete i trzeba je swiadomie otworzyc.
     [Fact]
     public void DiagnosticsPanelStartsClosed()
     {

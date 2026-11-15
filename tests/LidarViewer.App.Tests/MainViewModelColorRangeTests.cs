@@ -7,7 +7,6 @@ namespace LidarViewer.App.Tests;
 
 public class MainViewModelColorRangeTests
 {
-    // Dwa punkty w odleglosci 10 i 250 od sensora, intensywnosci 0 i 255.
     private static PointCloud Cloud(float near, float far) =>
         new([near, 0f, 0f, far, 0f, 0f], [0, 255]);
 

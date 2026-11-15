@@ -58,7 +58,6 @@ public class LiveSimulatorTests
                 var start = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000);
                 for (int i = 0; i < 5; i++)
                 {
-                    // Pakiet danych (1206 B) oraz pakiet innego rozmiaru, ktory ma zostac pominiety.
                     writer.Write(new byte[1206], start.AddMilliseconds(i * 10));
                     writer.Write(new byte[512], start.AddMilliseconds(i * 10 + 5));
                 }
@@ -70,8 +69,6 @@ public class LiveSimulatorTests
             using var simulator = new LiveSimulator("127.0.0.1", receiver.Port, path);
             simulator.Start();
 
-            // Plik ma 5 pakietow danych; wiecej niz 5 odebranych oznacza petle,
-            // a pakiety 512 B nie moga dotrzec do odbiornika.
             await Task.Delay(500);
             long received = receiver.PacketCount + receiver.RejectedCount;
             Assert.True(received > 5, "Symulator nie zapetlil nagrania.");

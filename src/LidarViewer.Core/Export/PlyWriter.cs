@@ -4,14 +4,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Export;
 
-/// <summary>
-/// Zapisuje chmure punktow do pliku PLY w formacie binary_little_endian.
-/// Format jest ten sam, ktory czyta PlyReader, wiec zapisana chmura daje
-/// sie od razu wczytac w aplikacji.
-///
-/// Zapisuje wspolrzedne swiata, czyli pozycje plus Origin. Dzieki temu
-/// eksport nie zmienia geometrii ani odleglosci punktow od czujnika.
-/// </summary>
 public static class PlyWriter
 {
     private const int PointsPerChunk = 4096;

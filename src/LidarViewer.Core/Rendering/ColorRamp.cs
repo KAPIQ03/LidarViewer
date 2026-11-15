@@ -20,8 +20,6 @@ public sealed class ColorRamp
         Max = max;
         _lut = Colormaps.Build(map, size);
 
-        // Skala liczona w double: przy skrajnych wartosciach float roznica
-        // Max - Min moglaby przeplac do nieskonczonosci.
         double range = (double)max - min;
         _scale = range > 0d && double.IsFinite(range) ? 1d / range : 0d;
     }

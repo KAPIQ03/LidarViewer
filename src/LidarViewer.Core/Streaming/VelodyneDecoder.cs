@@ -3,21 +3,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Dekoder pakietow danych Velodyne (1206 B: 12 blokow po 100 B + 6 B znacznika czasu i fabryki).
-/// Blok: naglowek banku (0xEEFF gorny, 0xDDFF dolny - HDL-64E), azymut w setnych stopnia
-/// i kanaly po 3 B (dystans uint16 w jednostkach 2 mm + intensywnosc).
-///
-/// Uklad blokow zalezy od liczby laserow w kalibracji:
-///  - 16 (VLP-16): blok = 2 strzaly x 16 laserow, azymut drugiego strzalu jest interpolowany;
-///  - 32 (HDL-32E/VLP-32): blok = 32 lasery;
-///  - 64 (HDL-64E): blok = 32 lasery gornego albo dolnego banku.
-///
-/// Uklad wspolrzednych jak w dokumentacji Velodyne i VeloView: X w prawo, Y do przodu,
-/// Z do gory, azymut rosnie zgodnie z ruchem wskazowek zegara od osi Y. Stale ukladu i
-/// czasow pochodza z ros-drivers/velodyne (rawdata.cc) i dokumentacji czujnikow; czasy
-/// dla 32 i 64 laserow sa przyblizone (czas bloku).
-/// </summary>
 public class VelodyneDecoder : IPacketDecoder
 {
     public const int PacketSize = 1206;
@@ -31,12 +16,10 @@ public class VelodyneDecoder : IPacketDecoder
     private const int DataOffset = 4;
     private const float DistanceResolution = 0.002f;
 
-    // VLP-16: czas bloku, odstep miedzy laserami w strzale i miedzy strzalami (mikrosekundy).
     private const float Vlp16BlockUs = 110.592f;
     private const float Vlp16LaserUs = 2.304f;
     private const float Vlp16FiringUs = 55.296f;
 
-    // 32 i 64 lasery: czas jednego bloku (mikrosekundy), przyblizenie dla HDL-32E.
     private const float WideBlockUs = 46.080f;
 
     private readonly VelodyneCalibration _calibration;
@@ -104,7 +87,6 @@ public class VelodyneDecoder : IPacketDecoder
                     int scan = offset + DataOffset + (firing * perFiring + channel) * ChannelSize;
                     ushort raw = BinaryPrimitives.ReadUInt16LittleEndian(packet.Slice(scan, 2));
 
-                    // Zerowy dystans oznacza brak powrotu - taki punkt nie istnieje.
                     if (raw == 0)
                         continue;
 
@@ -156,10 +138,6 @@ public class VelodyneDecoder : IPacketDecoder
 
     private static float WrapDegrees(float degrees) => degrees >= 360f ? degrees - 360f : degrees;
 
-    /// <summary>
-    /// Roznica azymutow miedzy blokami w setnych stopnia. Przy przekroczeniu 360 stopni roznica
-    /// jest ujemna - wtedy korzystamy z poprzedniej.
-    /// </summary>
     private static int AzimuthDiff(ReadOnlySpan<byte> packet, int block, ushort rotation, ref int lastDiff)
     {
         if (block >= BlocksPerPacket - 1)

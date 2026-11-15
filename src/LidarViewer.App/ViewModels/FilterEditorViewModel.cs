@@ -7,10 +7,6 @@ using LidarViewer.Core.Filters;
 
 namespace LidarViewer.App.ViewModels;
 
-/// <summary>
-/// Edytor parametrow pojedynczego etapu. Zmiany sa zapisywane dopiero po
-/// nacisnieciu "Zastosuj", a "Anuluj" przywraca wartosci etapu.
-/// </summary>
 public sealed class FilterEditorViewModel
 {
     private readonly PipelineStageViewModel _stage;

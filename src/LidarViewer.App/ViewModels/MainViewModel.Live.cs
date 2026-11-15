@@ -18,10 +18,6 @@ namespace LidarViewer.App.ViewModels;
 
 public partial class MainViewModel
 {
-    /// <summary>
-    /// Pojemnosc bufora punktow w trybie live. Wieksza wartosc daje
-    /// dluzsza historie, ale wolniejsze przeladowanie widoku.
-    /// </summary>
     public const int LiveBufferCapacity = 200_000;
 
     private UdpCloudReceiver? _receiver;
@@ -36,9 +32,6 @@ public partial class MainViewModel
 
     public LiveProtocol[] LiveProtocols { get; } = Enum.GetValues<LiveProtocol>();
 
-    /// <summary>
-    /// Czy odbior UDP pracuje.
-    /// </summary>
     public bool IsLive
     {
         get => _isLive;
@@ -61,10 +54,6 @@ public partial class MainViewModel
     [ObservableProperty]
     public partial bool SimulatorEnabled { get; set; }
 
-    /// <summary>
-    /// Nagranie pcap odtwarzane przez symulator. Gdy ustawione i istnieje, symulator
-    /// wysyla pakiety Velodyne VLP-16 z tego pliku; w przeciwnym razie scene syntetyczna.
-    /// </summary>
     public string? SimulatorPcapPath { get; set; }
 
     private bool SimulatorUsesPcap => !string.IsNullOrWhiteSpace(SimulatorPcapPath) && File.Exists(SimulatorPcapPath);
@@ -75,14 +64,10 @@ public partial class MainViewModel
 
     public long LiveRejectedCount => _receiver?.RejectedCount ?? 0;
 
-    /// <summary>
-    /// Podsumowanie strumienia pokazane przy pasku live.
-    /// </summary>
     public string LiveInfo => _receiver is null
         ? string.Empty
         : $"Punkty: {LivePointCount:N0} | Pakiety: {LivePacketCount:N0} | Odrzucone: {LiveRejectedCount:N0}";
 
-    /// <summary>Tempo odbioru do paska stanu: pakiety/s, odswiezenia/s i odrzucone.</summary>
     private string LiveRates => _receiver is null
         ? string.Empty
         : $" | {_receiver.PacketsPerSecond:N0} pkt/s | {_receiver.UpdatesPerSecond:N0} kl./s | odrzucone: {LiveRejectedCount:N0}";
@@ -92,13 +77,8 @@ public partial class MainViewModel
     public IRelayCommand StopLiveCommand { get; }
 
 
-    /// <summary>
-    /// Nowa chmura z odbiornika. Wywolywane z watku odbioru - widok
-    /// przenosi je na watek interfejsu.
-    /// </summary>
     public event Action<PointCloud>? LiveCloudUpdated;
 
-    /// <summary>Blad odbioru UDP. Wolane z watku odbioru - okno przenosi je na watek interfejsu.</summary>
     public event Action<string>? LiveFaulted;
 
 
@@ -146,46 +126,30 @@ public partial class MainViewModel
         _receiver = null;
         IsLive = false;
 
-        // Po zatrzymaniu odbioru wracamy do chmury z pliku - widok nie
-        // powinien zostac z ostatnia stanu na zywo.
         PointCloud = Pipeline.Output;
         Status = "Zatrzymano odbiór na żywo.";
     }
 
-    /// <summary>
-    /// Nowa chmura z odbiornika. Wolane z watku odbioru - widok
-    /// przenosi ja na watek interfejsu.
-    /// </summary>
     public void ReceiveLiveCloud(PointCloud cloud)
     {
         ArgumentNullException.ThrowIfNull(cloud);
 
-        // Klatka nagrywana jest tutaj, a nie w ApplyLiveCloud - strumien
-        // dociera do odbioru niezaleznie od tego, czy okno jest otwarte.
         RecordLiveFrame(cloud);
         LiveCloudUpdated?.Invoke(cloud);
     }
 
     private void ReceiveLiveFault(Exception ex) => LiveFaulted?.Invoke(ex.Message);
 
-    /// <summary>
-    /// Konczy tryb live po bledzie odbioru. Wolane z watku interfejsu.
-    /// </summary>
     public void ApplyLiveFault(string message)
     {
         StopLiveCore();
         Status = $"Błąd odbioru UDP: {message}";
     }
 
-    /// <summary>
-    /// Wstawia chmure otrzymana z odbiornika do widoku. Wolane z watku
-    /// interfejsu.
-    /// </summary>
     public void ApplyLiveCloud(PointCloud cloud)
     {
         ArgumentNullException.ThrowIfNull(cloud);
 
-        // Filtry dzialaja tez na zywo: chmura przechodzi przez pipeline, a widok dostaje jego wynik.
         Pipeline.Source = cloud;
         PointCloud = Pipeline.Output;
         OnPropertyChanged(nameof(StatusInfo));
@@ -195,8 +159,6 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(RecordInfo));
     }
 
-    // Klatka nagrywana jest w chwili, gdy chmura trafia na ekran. Recorder
-    // odrzuca klatki za szybkie, wiec zapis nie zalewa dysku.
     private void RecordLiveFrame(PointCloud cloud)
     {
         SequenceRecorder? recorder = _recorder;
@@ -210,8 +172,6 @@ public partial class MainViewModel
     {
         if (value)
         {
-            // Dekoder musi pasowac do tego, co wysyla symulator, inaczej odrzuci
-            // wszystkie pakiety: nagranie pcap to Velodyne VLP-16, scena syntetyczna to protokol wlasny.
             bool usePcap = SimulatorUsesPcap;
             if (usePcap)
             {
@@ -260,8 +220,6 @@ public partial class MainViewModel
 
     partial void OnLiveProtocolChanged(LiveProtocol value)
     {
-        // Zmiana formatu pakietow wymaga nowego dekodera, wiec odbior
-        // musi wystartowac od nowa.
         if (_receiver is null)
             return;
 

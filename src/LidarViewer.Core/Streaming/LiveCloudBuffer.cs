@@ -2,16 +2,6 @@ using LidarViewer.Core.Models;
 
 namespace LidarViewer.Core.Streaming;
 
-/// <summary>
-/// Kumulujacy bufor punktow o stalyj pojemnosci.
-///
-/// Tryb live pokazuje ostatnie pakiety, nie tylko ostatni, wiec punkty sie
-/// kumuluja. Gdy bufor jest pelny, kasuje najstarsze - dzieki temu pamiec
-/// nie rosie w nieskonczonosc, a widok pokazuje ostatni obrot czujnika.
-///
-/// Bufor nie jest bezpieczny watkowo. UdpCloudReceiver chroni zapis i odczyt migawki wspolna blokada;
-/// odczyt samego Count z innego watku jest bezpieczny (pojedyncza liczba calkowita).
-/// </summary>
 public sealed class LiveCloudBuffer
 {
     private readonly float[] _positions;
@@ -26,11 +16,6 @@ public sealed class LiveCloudBuffer
     private float _lastAzimuth = float.NaN;
     private PointCloud? _completed;
 
-    /// <param name="capacity">Pojemnosc w punktach.</param>
-    /// <param name="byRevolution">
-    /// Dziel strumien na obroty czujnika (po azymucie): migawka to ostatni pelny obrot, a nie
-    /// kilka nalozonych na siebie. Wymaga atrybutu Azimuth w chmurach (dekoder Velodyne).
-    /// </param>
     public LiveCloudBuffer(int capacity, bool byRevolution = false)
     {
         _byRevolution = byRevolution;
@@ -53,7 +38,6 @@ public sealed class LiveCloudBuffer
 
         if (_byRevolution && cloud.Azimuth is { Length: > 0 } azimuths)
         {
-            // Azymut spadajacy o ponad pol obrotu to przejscie przez 360 stopni = poczatek nowego obrotu.
             int start = 0;
             float previous = _lastAzimuth;
             for (int i = 0; i < azimuths.Length; i++)
@@ -90,8 +74,6 @@ public sealed class LiveCloudBuffer
         if (to <= from)
             return;
 
-        // Przy pelnym buforze zostawiamy tylko najnowsze punkty dodawanej
-        // chmury - starsze i tak zostalyby zaraz skasowane.
         int skip = from + Math.Max(0, (to - from) - Capacity);
         int take = to - skip;
 
@@ -117,9 +99,6 @@ public sealed class LiveCloudBuffer
         }
     }
 
-    /// <summary>
-    /// Migawka. W trybie obrotow: ostatni pelny obrot (do czasu pierwszego pelnego obrotu - to, co juz jest).
-    /// </summary>
     public PointCloud Snapshot() => _byRevolution && _completed is not null ? _completed : SnapshotCurrent();
 
     private PointCloud SnapshotCurrent()
@@ -130,7 +109,6 @@ public sealed class LiveCloudBuffer
         var azimuth = _hasAzimuth ? new float[_count] : null;
         var time = _hasTime ? new float[_count] : null;
 
-        // Bufor pelny - najstarszy punkt lezy pod wskaznikiem zapisu.
         int start = _count == Capacity ? _writeIndex : 0;
         int first = Math.Min(_count, Capacity - start);
         int rest = _count - first;
