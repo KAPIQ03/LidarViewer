@@ -155,18 +155,16 @@ public class SequencePlaybackTests : IDisposable
     }
 
     [Fact]
-    public void LoadingSingleFileClosesPreviousSequence()
+    public async Task LoadingSingleFileClosesPreviousSequence()
     {
         WriteSequence();
         var vm = new MainViewModel();
         vm.LoadSequenceCommand.Execute(_dir);
         vm.PlayPauseCommand.Execute(null);
 
-        vm.SetSourceForTests(new LidarViewer.Core.Models.PointCloud([0, 0, 0]));
-        // Wczytanie pliku przez komende zamyka sekwencje, wiec robimy to jawnie przez plik.
         string single = Path.Combine(_dir, "f0.ply");
         vm.FilePath = single;
-        vm.LoadCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+        await vm.LoadCommand.ExecuteAsync(null);
 
         Assert.False(vm.HasSequence);
         Assert.False(vm.IsPlaying);
