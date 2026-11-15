@@ -14,6 +14,8 @@ public static class PointCloudWriter
             [".ply"] = (cloud, path) => PlyWriter.Write(path, cloud),
             [".csv"] = (cloud, path) => CsvWriter.Write(path, cloud),
             [".xyz"] = (cloud, path) => CsvWriter.Write(path, cloud),
+            [".pcd"] = (cloud, path) => PcdWriter.Write(path, cloud),
+            [".las"] = (cloud, path) => LasWriter.Write(path, cloud),
         };
 
     public static IReadOnlyCollection<string> SupportedExtensions => Writers.Keys;

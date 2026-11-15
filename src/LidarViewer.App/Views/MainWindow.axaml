@@ -33,6 +33,7 @@
                 <Button Content="Sekwencja..." Click="OnBrowseSequenceClick" Margin="0,0,6,4" />
                 <Button Content="Wyświetl" Command="{Binding LoadCommand}" Margin="0,0,6,4" />
                 <Button Content="Zapisz jako..." x:Name="SaveAsButton" Click="OnSaveAsClick" Margin="0,0,6,4" />
+                <Button Content="Zrzut PNG..." Click="OnScreenshotClick" Margin="0,0,6,4" />
                 <Button Content="Kalibracja..." Click="OnBrowseCalibrationClick" Margin="0,0,6,4"
                         ToolTip.Tip="Plik db.xml czujnika Velodyne (HDL-32E, VLP-32, HDL-64E...)" />
                 <Button Content="✕" Command="{Binding ResetCalibrationCommand}" Margin="0,0,6,4"

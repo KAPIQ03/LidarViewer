@@ -104,12 +104,74 @@ public partial class MainWindow : Window
             FileTypeChoices =
             [
                 new FilePickerFileType("Chmura PLY") { Patterns = ["*.ply"] },
+                new FilePickerFileType("Chmura PCD") { Patterns = ["*.pcd"] },
+                new FilePickerFileType("Chmura LAS") { Patterns = ["*.las"] },
                 new FilePickerFileType("Punkty tekstowe") { Patterns = ["*.xyz", "*.csv"] },
             ],
         });
 
         if (file?.TryGetLocalPath() is { } path)
             vm.ExportCloud(path);
+    }
+
+    private async void OnScreenshotClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Zapisz zrzut widoku",
+            SuggestedFileName = $"widok-{DateTime.Now:yyyyMMdd-HHmmss}.png",
+            DefaultExtension = "png",
+            FileTypeChoices = [new FilePickerFileType("Obraz PNG") { Patterns = ["*.png"] }],
+        });
+
+        if (file?.TryGetLocalPath() is not { } path)
+            return;
+
+        try
+        {
+            if (vm.Is3D)
+            {
+                // Widok OpenGL nie trafia do RenderTargetBitmap - piksele czyta sam z bufora ramki.
+                View3D.RequestScreenshot((width, height, rgba) => SaveRgbaAsPng(vm, path, width, height, rgba));
+            }
+            else
+            {
+                var size = new Avalonia.PixelSize(Math.Max(1, (int)View2D.Bounds.Width), Math.Max(1, (int)View2D.Bounds.Height));
+                using var bitmap = new Avalonia.Media.Imaging.RenderTargetBitmap(size);
+                bitmap.Render(View2D);
+                bitmap.Save(path);
+                vm.Status = $"Zapisano zrzut widoku: {System.IO.Path.GetFileName(path)}.";
+            }
+        }
+        catch (Exception ex)
+        {
+            vm.Status = $"Błąd: {ex.Message}";
+        }
+    }
+
+    private static void SaveRgbaAsPng(MainViewModel vm, string path, int width, int height, byte[] rgba)
+    {
+        try
+        {
+            using var bitmap = new Avalonia.Media.Imaging.WriteableBitmap(
+                new Avalonia.PixelSize(width, height), new Avalonia.Vector(96, 96),
+                Avalonia.Platform.PixelFormat.Rgba8888, Avalonia.Platform.AlphaFormat.Opaque);
+            using (var buffer = bitmap.Lock())
+            {
+                for (int row = 0; row < height; row++)
+                    System.Runtime.InteropServices.Marshal.Copy(
+                        rgba, row * width * 4, buffer.Address + row * buffer.RowBytes, width * 4);
+            }
+
+            bitmap.Save(path);
+            vm.Status = $"Zapisano zrzut widoku: {System.IO.Path.GetFileName(path)} ({width}×{height}).";
+        }
+        catch (Exception ex)
+        {
+            vm.Status = $"Błąd: {ex.Message}";
+        }
     }
 
     private async void OnRecordClick(object? sender, RoutedEventArgs e)

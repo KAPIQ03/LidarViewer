@@ -145,6 +145,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
     private bool _colorsDirty = true;
     private bool _cameraFitted;
     private Vector3 _anchor;
+    private Action<int, int, byte[]>? _screenshotCallback;
     private uint _guideVao, _guideVbo, _guideColVbo;
     private int _axisVertexCount, _gridVertexCount;
 
@@ -287,6 +288,9 @@ public sealed class PointCloudView3D : OpenGlControlBase
             gl.BindVertexArray(_vao);
         }
 
+        if (_screenshotCallback is not null)
+            CaptureScreenshot(gl, width, height);
+
         if (!_firstRenderReported)
         {
             _firstRenderReported = true;
@@ -314,6 +318,42 @@ public sealed class PointCloudView3D : OpenGlControlBase
     {
         _colorsDirty = true;
         RequestNextFrameRendering();
+    }
+
+    /// <summary>
+    /// Zleca zrzut widoku. Przy najblizszym renderze piksele sa odczytywane z bufora ramki i przekazywane
+    /// (szerokosc, wysokosc, RGBA od gory do dolu) w wywolaniu zwrotnym na watku interfejsu.
+    /// </summary>
+    public void RequestScreenshot(Action<int, int, byte[]> callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        _screenshotCallback = callback;
+        RequestNextFrameRendering();
+    }
+
+    private unsafe void CaptureScreenshot(GL gl, int width, int height)
+    {
+        Action<int, int, byte[]>? callback = _screenshotCallback;
+        _screenshotCallback = null;
+        if (callback is null)
+            return;
+
+        byte[] raw = new byte[width * height * 4];
+        fixed (byte* data = raw)
+            gl.ReadPixels(0, 0, (uint)width, (uint)height, Silk.NET.OpenGL.PixelFormat.Rgba, PixelType.UnsignedByte, data);
+
+        // OpenGL liczy wiersze od dolu, a obraz ma byc od gory; alfa wymuszamy na nieprzezroczysta.
+        byte[] rgba = new byte[raw.Length];
+        int stride = width * 4;
+        for (int row = 0; row < height; row++)
+        {
+            System.Buffer.BlockCopy(raw, (height - 1 - row) * stride, rgba, row * stride, stride);
+        }
+
+        for (int i = 3; i < rgba.Length; i += 4)
+            rgba[i] = 255;
+
+        Dispatcher.UIThread.Post(() => callback(width, height, rgba));
     }
 
     /// <summary>
