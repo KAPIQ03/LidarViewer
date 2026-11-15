@@ -60,6 +60,7 @@ public partial class MainViewModel
 
     public IReadOnlyList<PlaybackSpeed> Speeds { get; } =
     [
+        new PlaybackSpeed(0.1, "0.1x"),
         new PlaybackSpeed(0.25, "0.25x"),
         new PlaybackSpeed(0.5, "0.5x"),
         new PlaybackSpeed(1.0, "1x"),
@@ -71,6 +72,122 @@ public partial class MainViewModel
     public partial PlaybackSpeed? Speed { get; set; }
 
     public IRelayCommand PlayPauseCommand { get; }
+
+    /// <summary>
+    /// Najwiecej wczesniejszych klatek doklejanych do widoku ("trailing frames").
+    /// </summary>
+    public const int MaxTrailingFrames = 10;
+
+    /// <summary>
+    /// Ile poprzednich klatek pokazac razem z biezaca (0 - tylko biezaca).
+    /// </summary>
+    [ObservableProperty]
+    public partial int TrailingFrames { get; set; }
+
+    partial void OnTrailingFramesChanged(int value)
+    {
+        int clamped = Math.Clamp(value, 0, MaxTrailingFrames);
+        if (clamped != value)
+        {
+            TrailingFrames = clamped;
+            return;
+        }
+
+        if (Player is not null)
+            ShowFrame(Player.FrameIndex);
+    }
+
+    /// <summary>
+    /// Numer biezacej klatki liczony od 1 (0, gdy nie ma sekwencji). Ustawienie przewija do klatki.
+    /// </summary>
+    public int FrameNumber
+    {
+        get => Player is null ? 0 : Player.FrameIndex + 1;
+        set
+        {
+            if (Player is null)
+                return;
+
+            Player.GoToFrame(value - 1);
+            SyncPlaybackState();
+        }
+    }
+
+    public int TotalFrames => Sequence?.FrameCount ?? 0;
+
+    /// <summary>
+    /// Pierwsza klatka zakresu odtwarzania (od 1).
+    /// </summary>
+    public int RangeStart
+    {
+        get => Player is null ? 0 : Player.StartFrame + 1;
+        set
+        {
+            if (Player is null)
+                return;
+
+            Player.SetRange(value - 1, Player.EndFrame);
+            SyncPlaybackState();
+        }
+    }
+
+    /// <summary>
+    /// Ostatnia klatka zakresu odtwarzania (od 1, wlacznie).
+    /// </summary>
+    public int RangeEnd
+    {
+        get => Player is null ? 0 : Player.EndFrame + 1;
+        set
+        {
+            if (Player is null)
+                return;
+
+            Player.SetRange(Player.StartFrame, value - 1);
+            SyncPlaybackState();
+        }
+    }
+
+    [RelayCommand]
+    private void StepForward() => StepFrames(1);
+
+    [RelayCommand]
+    private void StepBack() => StepFrames(-1);
+
+    [RelayCommand]
+    private void FirstFrame()
+    {
+        Player?.GoToFirst();
+        SyncPlaybackState();
+    }
+
+    [RelayCommand]
+    private void LastFrame()
+    {
+        Player?.GoToLast();
+        SyncPlaybackState();
+    }
+
+    public void StepFrames(int frames)
+    {
+        Player?.Step(frames);
+        SyncPlaybackState();
+    }
+
+    /// <summary>
+    /// Odswieza wlasciwosci zalezne od pozycji i zakresu odtwarzacza po zmianie zrobionej z interfejsu.
+    /// </summary>
+    private void SyncPlaybackState()
+    {
+        if (Player is null)
+            return;
+
+        PositionSeconds = Player.PositionSeconds;
+        OnPropertyChanged(nameof(IsPlaying));
+        OnPropertyChanged(nameof(FrameNumber));
+        OnPropertyChanged(nameof(FrameInfo));
+        OnPropertyChanged(nameof(RangeStart));
+        OnPropertyChanged(nameof(RangeEnd));
+    }
 
     public IRelayCommand<string> LoadSequenceCommand { get; }
 
@@ -128,6 +245,10 @@ public partial class MainViewModel
         Sequence = null;
         PositionSeconds = 0;
         OnPropertyChanged(nameof(IsPlaying));
+        OnPropertyChanged(nameof(TotalFrames));
+        OnPropertyChanged(nameof(FrameNumber));
+        OnPropertyChanged(nameof(RangeStart));
+        OnPropertyChanged(nameof(RangeEnd));
     }
 
     private void ApplySource(PointCloud cloud)
@@ -203,7 +324,8 @@ public partial class MainViewModel
             PositionSeconds = 0;
             ShowFrame(0);
             Status = $"Wczytano sekwencję „{source.Name}” ({source.FrameCount} klatek).";
-            OnPropertyChanged(nameof(IsPlaying));
+            OnPropertyChanged(nameof(TotalFrames));
+            SyncPlaybackState();
         }
         catch (Exception ex)
         {
@@ -218,10 +340,15 @@ public partial class MainViewModel
         if (Sequence is null)
             return;
 
-        PointCloud cloud = Sequence.LoadFrame(index);
-        Pipeline.Source = cloud;
+        int first = Math.Max(0, index - TrailingFrames);
+        var clouds = new List<PointCloud>(index - first + 1);
+        for (int i = first; i <= index; i++)
+            clouds.Add(Sequence.LoadFrame(i));
+
+        Pipeline.Source = CloudMerge.Concatenate(clouds);
         PointCloud = Pipeline.Output;
         OnPropertyChanged(nameof(FrameInfo));
+        OnPropertyChanged(nameof(FrameNumber));
     }
 
     /// <summary>

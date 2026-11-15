@@ -280,4 +280,94 @@ public class SequencePlaybackTests : IDisposable
         Assert.False(vm.HasSequence);
         Assert.StartsWith("Błąd", vm.Status);
     }
+
+    [Fact]
+    public void StepCommandsMoveOneFrameAndUpdateNumber()
+    {
+        WriteSequence(frames: 4);
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+
+        vm.StepForwardCommand.Execute(null);
+        Assert.Equal(2, vm.FrameNumber);
+        Assert.Equal("Klatka 2 / 4", vm.FrameInfo);
+        Assert.Equal(0.1, vm.PositionSeconds, 6);
+
+        vm.LastFrameCommand.Execute(null);
+        Assert.Equal(4, vm.FrameNumber);
+
+        vm.StepBackCommand.Execute(null);
+        Assert.Equal(3, vm.FrameNumber);
+
+        vm.FirstFrameCommand.Execute(null);
+        Assert.Equal(1, vm.FrameNumber);
+    }
+
+    [Fact]
+    public void SettingFrameNumberSeeksToThatFrame()
+    {
+        WriteSequence(frames: 4);
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+
+        vm.FrameNumber = 3;
+
+        Assert.Equal("Klatka 3 / 4", vm.FrameInfo);
+        Assert.Equal(0.2, vm.PositionSeconds, 6);
+        Assert.Equal(4, vm.TotalFrames);
+    }
+
+    [Fact]
+    public void RangeKeepsSteppingInsideIt()
+    {
+        WriteSequence(frames: 5);
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+
+        vm.RangeStart = 2;
+        vm.RangeEnd = 4;
+
+        Assert.Equal(2, vm.FrameNumber);
+        vm.LastFrameCommand.Execute(null);
+        Assert.Equal(4, vm.FrameNumber);
+        vm.StepForwardCommand.Execute(null);
+        Assert.Equal(4, vm.FrameNumber);
+        vm.FirstFrameCommand.Execute(null);
+        Assert.Equal(2, vm.FrameNumber);
+    }
+
+    [Fact]
+    public void TrailingFramesAddPreviousFramesToView()
+    {
+        WriteSequence(frames: 4); // kazda klatka ma 2 punkty
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+        vm.FrameNumber = 3;
+
+        vm.TrailingFrames = 2;
+
+        Assert.Equal(6, vm.PointCloud?.Count);
+
+        vm.FrameNumber = 1;
+        Assert.Equal(2, vm.PointCloud?.Count); // brak wczesniejszych klatek
+
+        vm.TrailingFrames = 99;
+        Assert.Equal(MainViewModel.MaxTrailingFrames, vm.TrailingFrames);
+    }
+
+    [Fact]
+    public async Task OpeningSingleFileResetsPlaybackNumbers()
+    {
+        WriteSequence();
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+        vm.FrameNumber = 2;
+
+        vm.FilePath = Path.Combine(_dir, "f0.ply");
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, vm.TotalFrames);
+        Assert.Equal(0, vm.FrameNumber);
+        Assert.Equal(0, vm.RangeEnd);
+    }
 }

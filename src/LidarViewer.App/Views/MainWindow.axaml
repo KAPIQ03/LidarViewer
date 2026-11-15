@@ -98,17 +98,33 @@
                 <Border DockPanel.Dock="Bottom" Padding="8,6" Background="#14FFFFFF"
                         IsVisible="{Binding HasSequence}">
                     <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Button Content="Odtwórz" Command="{Binding PlayPauseCommand}" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Button Content="⏮" Command="{Binding FirstFrameCommand}" ToolTip.Tip="Pierwsza klatka (Home)" />
+                            <Button Content="◀" Command="{Binding StepBackCommand}" ToolTip.Tip="Klatka wstecz (←)" />
+                            <Button Content="Odtwórz" Command="{Binding PlayPauseCommand}" ToolTip.Tip="Odtwarzaj / pauza (spacja)" />
+                            <Button Content="▶" Command="{Binding StepForwardCommand}" ToolTip.Tip="Klatka do przodu (→)" />
+                            <Button Content="⏭" Command="{Binding LastFrameCommand}" ToolTip.Tip="Ostatnia klatka (End)" />
                             <Slider x:Name="SeekSlider" Width="320" Minimum="0" Maximum="{Binding Duration}"
                                     Value="{Binding PositionSeconds}" />
-                            <TextBlock Text="{Binding FrameInfo}" VerticalAlignment="Center" MinWidth="90" />
+                            <TextBlock Text="Klatka" VerticalAlignment="Center" />
+                            <NumericUpDown Width="110" Minimum="1" Maximum="{Binding TotalFrames}" Increment="1"
+                                           FormatString="0" Value="{Binding FrameNumber}" />
+                            <TextBlock Text="{Binding TotalFrames, StringFormat='/ {0}'}" VerticalAlignment="Center" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="Tempo" VerticalAlignment="Center" />
                             <ComboBox Width="90" ItemsSource="{Binding Speeds}" SelectedItem="{Binding Speed}"
                                       DisplayMemberBinding="{Binding Label}" />
                             <CheckBox Content="Pętla" IsChecked="{Binding Loop}" VerticalAlignment="Center" />
+                            <TextBlock Text="Zakres" VerticalAlignment="Center" />
+                            <NumericUpDown Width="110" Minimum="1" Maximum="{Binding TotalFrames}" Increment="1"
+                                           FormatString="0" Value="{Binding RangeStart}" />
+                            <TextBlock Text="–" VerticalAlignment="Center" />
+                            <NumericUpDown Width="110" Minimum="1" Maximum="{Binding TotalFrames}" Increment="1"
+                                           FormatString="0" Value="{Binding RangeEnd}" />
+                            <TextBlock Text="Ślad (poprzednie klatki)" VerticalAlignment="Center" />
+                            <NumericUpDown Width="100" Minimum="0" Maximum="10" Increment="1"
+                                           FormatString="0" Value="{Binding TrailingFrames}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

@@ -7,12 +7,12 @@ namespace LidarViewer.Core.Playback;
 /// <summary>
 /// Klatki z nagrania pcap czujnika Velodyne, czytane leniwie. Konstruktor skanuje plik raz i buduje
 /// indeks (polozenie pakietow danych i granice obrotow wg przejscia azymutu przez 360 stopni);
-/// sama klatka jest dekodowana dopiero na zadanie, a kilka ostatnich trzymanych w pamieci.
+/// sama klatka jest dekodowana dopiero na zadanie, a kilkanascie ostatnich trzymanych w pamieci.
 /// Dzieki temu nie powstaja zadne pliki posrednie, a przewijanie jest swobodne.
 /// </summary>
 public sealed class PcapFrameSource : IFrameSource
 {
-    private const int CacheSize = 8;
+    private const int CacheSize = 16;
 
     private readonly string _path;
     private readonly VelodyneDecoder _decoder;
@@ -21,9 +21,7 @@ public sealed class PcapFrameSource : IFrameSource
     private readonly int[] _frameStarts; // pierwszy pakiet kazdej klatki + wartownik na koncu
     private readonly double[] _times;
 
-    private readonly object _gate = new();
-    private readonly Dictionary<int, PointCloud> _cache = [];
-    private readonly Queue<int> _cacheOrder = new();
+    private readonly FrameCache _cache = new(CacheSize);
 
     public PcapFrameSource(string path, VelodyneCalibration? calibration = null)
     {
@@ -99,25 +97,7 @@ public sealed class PcapFrameSource : IFrameSource
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, FrameCount);
 
-        lock (_gate)
-        {
-            if (_cache.TryGetValue(index, out PointCloud? cached))
-                return cached;
-        }
-
-        PointCloud cloud = Decode(index);
-
-        lock (_gate)
-        {
-            if (_cache.TryAdd(index, cloud))
-            {
-                _cacheOrder.Enqueue(index);
-                while (_cacheOrder.Count > CacheSize)
-                    _cache.Remove(_cacheOrder.Dequeue());
-            }
-        }
-
-        return cloud;
+        return _cache.GetOrLoad(index, Decode);
     }
 
     private PointCloud Decode(int index)

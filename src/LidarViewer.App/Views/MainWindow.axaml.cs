@@ -218,7 +218,7 @@ public partial class MainWindow : Window
     }
 
     // Skroty klawiszowe: R - reset widoku, 2 - widok plaszczyzny, 3 - 3D, 4 - kamera z perspektywy lidaru,
-    // spacja - odtwarzanie. W polach tekstowych skroty nie dzialaja, bo
+    // spacja - odtwarzanie, strzalki - krok klatki, Home/End - pierwsza/ostatnia klatka. W polach tekstowych skroty nie dzialaja, bo
     // klawisze musza trafic do wpisywania.
     protected override void OnKeyDown(KeyEventArgs e)
     {
@@ -243,6 +243,18 @@ public partial class MainWindow : Window
                 break;
             case Key.Space:
                 _vm.PlayPauseCommand.Execute(null);
+                break;
+            case Key.Left:
+                _vm.StepBackCommand.Execute(null);
+                break;
+            case Key.Right:
+                _vm.StepForwardCommand.Execute(null);
+                break;
+            case Key.Home:
+                _vm.FirstFrameCommand.Execute(null);
+                break;
+            case Key.End:
+                _vm.LastFrameCommand.Execute(null);
                 break;
             default:
                 return;

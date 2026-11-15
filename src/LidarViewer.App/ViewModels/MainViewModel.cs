@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -202,7 +203,7 @@ public partial class MainViewModel : ViewModelBase
         StartLiveCommand = new RelayCommand(StartLiveCore);
         StopLiveCommand = new RelayCommand(StopLiveCore);
         ResetCalibrationCommand = new RelayCommand(() => CalibrationPath = "");
-        Speed = Speeds[2];
+        Speed = Speeds.First(speed => speed.Multiplier == 1.0);
     }
 
     /// <summary>

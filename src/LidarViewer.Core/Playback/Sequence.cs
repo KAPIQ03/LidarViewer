@@ -10,9 +10,9 @@ namespace LidarViewer.Core.Playback;
 public sealed class Sequence : IFrameSource
 {
     private const double DefaultFrameInterval = 0.1;
+    private const int CacheSize = 16;
 
-    private int _cachedIndex = -1;
-    private PointCloud? _cachedFrame;
+    private readonly FrameCache _cache = new(CacheSize);
 
     public Sequence(string directory, SequenceManifest manifest)
     {
@@ -73,13 +73,7 @@ public sealed class Sequence : IFrameSource
         ArgumentOutOfRangeException.ThrowIfNegative(index);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Frames.Count);
 
-        if (_cachedIndex == index && _cachedFrame is not null)
-            return _cachedFrame;
-
-        string path = Path.Combine(Directory, Frames[index].File);
-        PointCloud cloud = PointCloudLoader.Read(path);
-        _cachedIndex = index;
-        _cachedFrame = cloud;
-        return cloud;
+        return _cache.GetOrLoad(index, i =>
+            PointCloudLoader.Read(Path.Combine(Directory, Frames[i].File)));
     }
 }

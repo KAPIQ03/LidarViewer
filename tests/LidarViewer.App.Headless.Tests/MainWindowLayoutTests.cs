@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using LidarViewer.App.ViewModels;
 using LidarViewer.App.Views;
 
@@ -215,5 +216,55 @@ public class MainWindowLayoutTests
     {
         Point origin = control.TranslatePoint(new Point(0, 0), window) ?? default;
         return new Rect(origin, control.Bounds.Size);
+    }
+
+    private static string WriteSequence(int frames)
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "lvhl-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var entries = new List<string>();
+        for (int i = 0; i < frames; i++)
+        {
+            File.WriteAllLines(Path.Combine(dir, $"f{i}.ply"),
+            [
+                "ply", "format ascii 1.0", "element vertex 1",
+                "property float x", "property float y", "property float z", "end_header", "0 0 0",
+            ]);
+            entries.Add($"{{\"file\":\"f{i}.ply\",\"timestamp\":{i * 0.1}}}");
+        }
+
+        File.WriteAllText(Path.Combine(dir, "sequence.json"), "{\"frames\":[" + string.Join(",", entries) + "]}");
+        return dir;
+    }
+
+    // Pasek odtwarzania: pola numeryczne musza pokazywac numer klatki i zakres, a caly pasek miesci sie w oknie.
+    [AvaloniaFact]
+    public void PlaybackBarShowsFrameNumbersAndFitsWindow()
+    {
+        string dir = WriteSequence(4);
+        try
+        {
+            var (window, vm) = ShowWindow();
+            vm.LoadSequenceCommand.Execute(dir);
+            Dispatcher.UIThread.RunJobs();
+
+            var boxes = window.GetVisualDescendants().OfType<NumericUpDown>().ToList();
+            Assert.Equal(4, boxes.Count);
+            Assert.Equal(1m, boxes[0].Value);   // numer klatki
+            Assert.Equal(1m, boxes[1].Value);   // poczatek zakresu
+            Assert.Equal(4m, boxes[2].Value);   // koniec zakresu
+            Assert.Equal(0m, boxes[3].Value);   // slad
+
+            vm.StepForwardCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(2m, boxes[0].Value);
+
+            foreach (var box in boxes)
+                Assert.True(ToWindow(box, window).Right <= Width, "pole poza oknem");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
     }
 }
