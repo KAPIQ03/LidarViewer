@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
 using Avalonia;
@@ -115,6 +116,38 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(ShowAxesProperty, value);
     }
 
+    public static readonly StyledProperty<bool> MeasureModeProperty =
+        AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(MeasureMode));
+
+    /// <summary>
+    /// Narzedzie pomiaru: klikniecie (bez przeciagania) wybiera najblizszy punkt, drugi wybor wyznacza odleglosc.
+    /// </summary>
+    public bool MeasureMode
+    {
+        get => GetValue(MeasureModeProperty);
+        set => SetValue(MeasureModeProperty, value);
+    }
+
+    public static readonly StyledProperty<double?> MeasuredDistanceProperty =
+        AvaloniaProperty.Register<PointCloudView3D, double?>(nameof(MeasuredDistance), defaultBindingMode: BindingMode.OneWayToSource);
+
+    /// <summary>Odleglosc miedzy dwoma wybranymi punktami (jednostki chmury); null, gdy nie wybrano dwoch.</summary>
+    public double? MeasuredDistance
+    {
+        get => GetValue(MeasuredDistanceProperty);
+        private set => SetValue(MeasuredDistanceProperty, value);
+    }
+
+    public static readonly StyledProperty<int> MeasuredPointCountProperty =
+        AvaloniaProperty.Register<PointCloudView3D, int>(nameof(MeasuredPointCount), defaultBindingMode: BindingMode.OneWayToSource);
+
+    /// <summary>Ile punktow wybrano do pomiaru (0-2).</summary>
+    public int MeasuredPointCount
+    {
+        get => GetValue(MeasuredPointCountProperty);
+        private set => SetValue(MeasuredPointCountProperty, value);
+    }
+
     private const string VertexShader = """
         in vec3 aPos;
         in vec4 aColor;
@@ -147,7 +180,12 @@ public sealed class PointCloudView3D : OpenGlControlBase
     private Vector3 _anchor;
     private Action<int, int, byte[]>? _screenshotCallback;
     private uint _guideVao, _guideVbo, _guideColVbo;
-    private int _axisVertexCount, _gridVertexCount;
+    private int _axisVertexCount, _gridVertexCount, _measureVertexCount;
+    private float[] _renderPositions = [];
+    private readonly List<Vector3> _measurePoints = [];
+    private bool _guidesDirty;
+    private Point _pressPoint;
+    private bool _pressWasLeft;
 
     private PointCloud? _cloud;
     private bool _uploadPending;
@@ -172,7 +210,17 @@ public sealed class PointCloudView3D : OpenGlControlBase
             view.RequestNextFrameRendering();
         });
 
-        FitVersionProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view._cameraFitted = false);
+        FitVersionProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) =>
+        {
+            view._cameraFitted = false;
+            if (view._measurePoints.Count > 0)
+                view.ClearMeasurement();
+        });
+        MeasureModeProperty.Changed.AddClassHandler<PointCloudView3D>((view, e) =>
+        {
+            if (e.NewValue is false && view._measurePoints.Count > 0)
+                view.ClearMeasurement();
+        });
         SensorViewProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
         PointSizeProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
         ShowGridProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
@@ -256,6 +304,8 @@ public sealed class PointCloudView3D : OpenGlControlBase
     {
         if (_uploadPending)
             UploadPoints(gl);
+        else if (_guidesDirty && _cloud is { Count: > 0 } guideCloud)
+            UploadGuides(gl, guideCloud);
 
         if (_colorsDirty)
             UploadColors(gl);
@@ -285,6 +335,15 @@ public sealed class PointCloudView3D : OpenGlControlBase
                 gl.DrawArrays(PrimitiveType.Lines, _axisVertexCount, (uint)_gridVertexCount);
             if (ShowAxes && _axisVertexCount > 0)
                 gl.DrawArrays(PrimitiveType.Lines, 0, (uint)_axisVertexCount);
+
+            if (_measureVertexCount > 0)
+            {
+                // Pomiar rysujemy na wierzchu, zeby nie znikal wsrod gestych punktow.
+                gl.Disable(EnableCap.DepthTest);
+                gl.DrawArrays(PrimitiveType.Lines, _axisVertexCount + _gridVertexCount, (uint)_measureVertexCount);
+                gl.Enable(EnableCap.DepthTest);
+            }
+
             gl.BindVertexArray(_vao);
         }
 
@@ -402,10 +461,38 @@ public sealed class PointCloudView3D : OpenGlControlBase
     private unsafe void UploadGuides(GL gl, PointCloud cloud)
     {
         var guides = SceneGuides.Build(SensorPosition(cloud), cloud.Radius);
-        float[] positions = [.. guides.AxisPositions, .. guides.GridPositions];
-        byte[] colors = [.. guides.AxisColors, .. guides.GridColors];
+        _guidesDirty = false;
+
+        // Pomiar: krzyzyk na kazdym wybranym punkcie i odcinek miedzy nimi (zolte).
+        var measurePositions = new List<float>();
+        float cross = Math.Max(cloud.Radius * 0.01f, 0.02f);
+        foreach (Vector3 point in _measurePoints)
+        {
+            measurePositions.AddRange([point.X - cross, point.Y, point.Z, point.X + cross, point.Y, point.Z]);
+            measurePositions.AddRange([point.X, point.Y - cross, point.Z, point.X, point.Y + cross, point.Z]);
+            measurePositions.AddRange([point.X, point.Y, point.Z - cross, point.X, point.Y, point.Z + cross]);
+        }
+
+        if (_measurePoints.Count == 2)
+        {
+            measurePositions.AddRange([_measurePoints[0].X, _measurePoints[0].Y, _measurePoints[0].Z]);
+            measurePositions.AddRange([_measurePoints[1].X, _measurePoints[1].Y, _measurePoints[1].Z]);
+        }
+
+        byte[] measureColors = new byte[measurePositions.Count / 3 * 4];
+        for (int i = 0; i < measureColors.Length; i += 4)
+        {
+            measureColors[i] = 255;
+            measureColors[i + 1] = 220;
+            measureColors[i + 2] = 40;
+            measureColors[i + 3] = 255;
+        }
+
+        float[] positions = [.. guides.AxisPositions, .. guides.GridPositions, .. measurePositions];
+        byte[] colors = [.. guides.AxisColors, .. guides.GridColors, .. measureColors];
         _axisVertexCount = guides.AxisVertexCount;
         _gridVertexCount = guides.GridVertexCount;
+        _measureVertexCount = measurePositions.Count / 3;
 
         gl.BindBuffer(BufferTargetARB.ArrayBuffer, _guideVbo);
         fixed (float* data = positions)
@@ -455,6 +542,8 @@ public sealed class PointCloudView3D : OpenGlControlBase
             relative[i + 2] = cloud.Positions[i + 2] - center.Z;
         }
 
+        _renderPositions = relative;
+
         gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
         fixed (float* data = relative)
             gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(relative.Length * sizeof(float)), data, BufferUsageARB.StaticDraw);
@@ -489,6 +578,8 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _panning = props.IsRightButtonPressed || (props.IsLeftButtonPressed && e.KeyModifiers.HasFlag(KeyModifiers.Shift));
         _rotating = props.IsLeftButtonPressed && !_panning;
         _lastPointer = e.GetPosition(this);
+        _pressPoint = _lastPointer;
+        _pressWasLeft = props.IsLeftButtonPressed;
         e.Pointer.Capture(this);
     }
 
@@ -497,6 +588,56 @@ public sealed class PointCloudView3D : OpenGlControlBase
         base.OnPointerReleased(e);
         _rotating = _panning = false;
         e.Pointer.Capture(null);
+
+        // Klikniecie bez przeciagania w trybie pomiaru wybiera punkt.
+        Point release = e.GetPosition(this);
+        if (MeasureMode && _pressWasLeft && Math.Abs(release.X - _pressPoint.X) + Math.Abs(release.Y - _pressPoint.Y) < 4)
+            PickMeasurePoint(release);
+        _pressWasLeft = false;
+    }
+
+    private void PickMeasurePoint(Point position)
+    {
+        if (_renderPositions.Length == 0)
+            return;
+
+        double scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        int width = Math.Max(1, (int)(Bounds.Width * scale));
+        int height = Math.Max(1, (int)(Bounds.Height * scale));
+        float aspect = (float)width / height;
+        Matrix4x4 viewProjection = SensorView ? _sensor.ViewProjection(aspect) : _camera.ViewProjection(aspect);
+
+        int index = PointPicker.Pick(
+            _renderPositions, viewProjection, (float)(position.X * scale), (float)(position.Y * scale),
+            width, height, (float)(12 * scale));
+        if (index < 0)
+            return;
+
+        // Trzeci wybor zaczyna pomiar od nowa.
+        if (_measurePoints.Count >= 2)
+            _measurePoints.Clear();
+
+        _measurePoints.Add(new Vector3(_renderPositions[index * 3], _renderPositions[index * 3 + 1], _renderPositions[index * 3 + 2]));
+        UpdateMeasurement();
+    }
+
+    /// <summary>
+    /// Usuwa wybrane punkty pomiaru.
+    /// </summary>
+    public void ClearMeasurement()
+    {
+        _measurePoints.Clear();
+        UpdateMeasurement();
+    }
+
+    private void UpdateMeasurement()
+    {
+        MeasuredPointCount = _measurePoints.Count;
+        MeasuredDistance = _measurePoints.Count == 2
+            ? Vector3.Distance(_measurePoints[0], _measurePoints[1])
+            : null;
+        _guidesDirty = true;
+        RequestNextFrameRendering();
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)

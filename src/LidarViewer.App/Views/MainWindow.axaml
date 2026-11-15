@@ -58,6 +58,9 @@
                 <Button Content="−Z" Tag="-Z" Click="OnViewDirectionClick" Margin="0,0,10,4" />
                 <CheckBox Content="Siatka" IsChecked="{Binding ShowGrid}" Margin="0,0,6,4" VerticalAlignment="Center" />
                 <CheckBox Content="Osie" IsChecked="{Binding ShowAxes}" Margin="0,0,6,4" VerticalAlignment="Center" />
+                <ToggleButton Content="Pomiar" IsChecked="{Binding IsMeasuring}" Margin="0,0,6,4"
+                              ToolTip.Tip="Kliknij dwa punkty chmury, aby zmierzyć odległość" />
+                <TextBlock Text="{Binding MeasureInfo}" VerticalAlignment="Center" Margin="0,0,6,4" Foreground="#FFE08A" />
             </WrapPanel>
 
             <WrapPanel>
@@ -166,6 +169,9 @@
                                         SensorView="{Binding IsSensorView}"
                                         PointSize="{Binding PointSize}" ShowGrid="{Binding ShowGrid}"
                                         ShowAxes="{Binding ShowAxes}"
+                                        MeasureMode="{Binding IsMeasuring}"
+                                        MeasuredDistance="{Binding MeasuredDistance, Mode=OneWayToSource}"
+                                        MeasuredPointCount="{Binding MeasuredPointCount, Mode=OneWayToSource}"
                                         Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
                     <c:PointCloudView x:Name="View2D" IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}"
                                       Plane="{Binding Plane}" ColorSettings="{Binding ColorSettings}"

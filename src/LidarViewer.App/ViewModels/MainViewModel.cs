@@ -274,6 +274,25 @@ public partial class MainViewModel : ViewModelBase
             Status = $"Po filtrach: {Pipeline.Output.Count:N0} punktów.";
     }
 
+    /// <summary>Narzedzie pomiaru odleglosci miedzy dwoma punktami w widoku 3D.</summary>
+    [ObservableProperty]
+    public partial bool IsMeasuring { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MeasureInfo))]
+    public partial double? MeasuredDistance { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MeasureInfo))]
+    public partial int MeasuredPointCount { get; set; }
+
+    public string MeasureInfo => !IsMeasuring ? string.Empty
+        : MeasuredDistance is { } distance ? $"Odległość: {distance:0.000}"
+        : MeasuredPointCount == 1 ? "Wybierz drugi punkt."
+        : "Kliknij punkt chmury.";
+
+    partial void OnIsMeasuringChanged(bool value) => OnPropertyChanged(nameof(MeasureInfo));
+
     /// <summary>Czy tabela punktow (spreadsheet) jest otwarta.</summary>
     [ObservableProperty]
     public partial bool IsTableOpen { get; set; }
