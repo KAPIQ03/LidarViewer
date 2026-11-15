@@ -99,6 +99,10 @@ Sekwencja to katalog z plikami klatek i manifestem `sequence.json`:
 }
 ```
 
+Nagranie sieciowe z Velodyne VLP-16 (`.pcap` lub `.pcapng`, pakiety danych UDP 1206 B) mozna
+otworzyc wprost przyciskiem wyboru pliku: aplikacja dzieli je na klatki (jeden obrot czujnika =
+jedna klatka), zapisuje jako sekwencje w katalogu tymczasowym i odtwarza jak kazda inna.
+
 Manifest opisuje klatki na osi czasu, wiec sekwencja odtwarza sie jak film: przyciski
 odtwarzania, przewijanie, wybor tempa i pętla.
 
