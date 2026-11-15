@@ -72,6 +72,16 @@
             </Menu>
 
             <Border Classes="panel" BorderThickness="0,1,0,1" Padding="8,6">
+                <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Height="38" VerticalAlignment="Top">
+                    <ToggleButton Classes="tool" IsChecked="{Binding IsTableOpen, Mode=TwoWay}" ToolTip.Tip="Tabela punktów">
+                        <mi:MaterialIcon Kind="TableLarge" Width="22" Height="22" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" IsChecked="{Binding IsFiltersPanelOpen, Mode=TwoWay}"
+                                  ToolTip.Tip="Panel boczny: wygląd, źródło danych, filtry">
+                        <mi:MaterialIcon Kind="DockRight" Width="22" Height="22" />
+                    </ToggleButton>
+                </StackPanel>
                 <WrapPanel ItemHeight="38">
                     <Button Classes="tool" Click="OnBrowseClick" ToolTip.Tip="Otwórz plik chmury punktów lub nagranie pcap">
                         <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" />
@@ -137,16 +147,8 @@
                         <mi:MaterialIcon Kind="FitToScreenOutline" Width="22" Height="22" />
                     </Button>
 
-                    <Separator Classes="vertical" />
-
-                    <ToggleButton Classes="tool" IsChecked="{Binding IsTableOpen, Mode=TwoWay}" ToolTip.Tip="Tabela punktów">
-                        <mi:MaterialIcon Kind="TableLarge" Width="22" Height="22" />
-                    </ToggleButton>
-                    <ToggleButton Classes="tool" IsChecked="{Binding IsFiltersPanelOpen, Mode=TwoWay}"
-                                  ToolTip.Tip="Panel boczny: wygląd, źródło danych, filtry">
-                        <mi:MaterialIcon Kind="DockRight" Width="22" Height="22" />
-                    </ToggleButton>
                 </WrapPanel>
+                </DockPanel>
             </Border>
         </StackPanel>
 
