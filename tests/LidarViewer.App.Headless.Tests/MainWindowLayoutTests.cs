@@ -267,4 +267,21 @@ public class MainWindowLayoutTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    // Tabela punktow: lista ma tyle elementow, ile punktow, ale tworzy kontrolki tylko dla widocznych wierszy.
+    [AvaloniaFact]
+    public void PointTableIsVirtualized()
+    {
+        var (window, vm) = ShowWindow();
+        var positions = new float[3 * 50_000];
+        vm.SetSourceForTests(new LidarViewer.Core.Models.PointCloud(positions));
+
+        vm.IsTableOpen = true;
+        Dispatcher.UIThread.RunJobs();
+
+        var list = window.GetVisualDescendants().OfType<ListBox>().First(l => l.ItemsSource is LidarViewer.Core.Models.PointTable);
+        Assert.Equal(50_000, list.ItemCount);
+        int realized = list.GetVisualDescendants().OfType<ListBoxItem>().Count();
+        Assert.InRange(realized, 1, 200);
+    }
 }

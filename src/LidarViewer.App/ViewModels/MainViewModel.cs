@@ -274,8 +274,25 @@ public partial class MainViewModel : ViewModelBase
             Status = $"Po filtrach: {Pipeline.Output.Count:N0} punktów.";
     }
 
+    /// <summary>Czy tabela punktow (spreadsheet) jest otwarta.</summary>
+    [ObservableProperty]
+    public partial bool IsTableOpen { get; set; }
+
+    /// <summary>
+    /// Tabela biezacej chmury, null gdy zamknieta lub brak danych. Wiersze sa formatowane leniwie.
+    /// </summary>
+    [ObservableProperty]
+    public partial PointTable? Table { get; set; }
+
+    partial void OnIsTableOpenChanged(bool value) => RefreshTable();
+
+    private void RefreshTable() =>
+        Table = IsTableOpen && PointCloud is { } cloud ? new PointTable(cloud) : null;
+
     partial void OnPointCloudChanged(PointCloud? value)
     {
+        RefreshTable();
+
         // Nowy plik ma inne wartosci danych, wiec zakres policzony dla
         // poprzedniego pliku przestaje obowiazywac. Zakres wpisany recznie
         // przez uzytkownika zostaje - to swiadome ustawienie, a nie

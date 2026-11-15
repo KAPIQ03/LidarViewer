@@ -111,6 +111,20 @@
                 <TextBox DockPanel.Dock="Bottom" Text="{Binding Diagnostics, Mode=OneWay}" IsReadOnly="True"
                          AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="140" Margin="6,0,6,6"
                          IsVisible="{Binding IsDiagnosticsOpen}" />
+                <Border DockPanel.Dock="Bottom" Margin="6,0,6,6" Padding="6" Background="#14FFFFFF" Height="190"
+                        IsVisible="{Binding IsTableOpen}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding Table.Header}" FontFamily="Menlo,Consolas,monospace"
+                                   FontSize="11" FontWeight="Bold" />
+                        <ListBox ItemsSource="{Binding Table}" FontFamily="Menlo,Consolas,monospace" FontSize="11">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <TextBlock Text="{Binding}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
                 <Border DockPanel.Dock="Bottom" Padding="8,6" Background="#14FFFFFF"
                         IsVisible="{Binding HasSequence}">
                     <StackPanel Spacing="6">
@@ -246,6 +260,7 @@
                     <TextBlock Text="{Binding LiveInfo}" VerticalAlignment="Center" />
                     <Button Content="Resetuj widok" Click="OnResetViewClick" ToolTip.Tip="Skrót: R" />
                     <ToggleButton Content="Filtry" IsChecked="{Binding IsFiltersPanelOpen}" />
+                    <ToggleButton Content="Tabela" IsChecked="{Binding IsTableOpen}" />
                     <ToggleButton Content="Log" IsChecked="{Binding IsDiagnosticsOpen}" />
                 </StackPanel>
             </Grid>
