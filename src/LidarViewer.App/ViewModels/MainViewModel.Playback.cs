@@ -30,6 +30,8 @@ public partial class MainViewModel
     [NotifyPropertyChangedFor(nameof(Duration))]
     public partial IFrameSource? Sequence { get; set; }
 
+    partial void OnSequenceChanged(IFrameSource? value) => OnPropertyChanged(nameof(StatusInfo));
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSequence))]
     [NotifyPropertyChangedFor(nameof(FrameInfo))]

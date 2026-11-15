@@ -36,6 +36,21 @@ public partial class MainWindow : Window
         Closed += OnClosed;
     }
 
+    private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
+
+    private void OnViewModeMenuClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm && sender is MenuItem { Tag: string tag }
+            && Enum.TryParse(tag, out ViewMode mode))
+            vm.ViewMode = mode;
+    }
+
+    private void OnShortcutsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+            vm.Status = "Skróty: R reset widoku | 2 / 3 / 4 widok 2D / 3D / kamera | spacja odtwarzanie | ← → krok klatki | Home / End pierwsza / ostatnia klatka.";
+    }
+
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm) return;

@@ -284,4 +284,15 @@ public class MainWindowLayoutTests
         int realized = list.GetVisualDescendants().OfType<ListBoxItem>().Count();
         Assert.InRange(realized, 1, 200);
     }
+
+    [AvaloniaFact]
+    public void MenuBarHasVeloViewStyleSections()
+    {
+        var (window, _) = ShowWindow();
+
+        var menu = window.GetVisualDescendants().OfType<Menu>().Single();
+        var headers = menu.Items.OfType<MenuItem>().Select(m => m.Header?.ToString()).ToList();
+
+        Assert.Equal(["_Plik", "_Widok", "_Live", "_Narzędzia", "_Pomoc"], headers);
+    }
 }

@@ -49,6 +49,7 @@ public partial class MainViewModel
 
             _isLive = value;
             OnPropertyChanged(nameof(IsLive));
+            OnPropertyChanged(nameof(StatusInfo));
             OnPropertyChanged(nameof(AutoFitCamera));
             OnPropertyChanged(nameof(AutoResetView));
             OnPropertyChanged(nameof(LiveInfo));

@@ -49,4 +49,14 @@ public class PointTableViewModelTests
 
         Assert.Null(vm.Table);
     }
+
+    [Fact]
+    public void StatusInfoShowsPointCountAndSource()
+    {
+        var vm = new MainViewModel();
+        Assert.Equal("Punkty: 0", vm.StatusInfo);
+
+        vm.SetSourceForTests(new PointCloud([1f, 2f, 3f, 4f, 5f, 6f]));
+        Assert.Equal("Punkty: 2", vm.StatusInfo);
+    }
 }

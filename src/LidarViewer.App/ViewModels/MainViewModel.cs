@@ -274,6 +274,20 @@ public partial class MainViewModel : ViewModelBase
             Status = $"Po filtrach: {Pipeline.Output.Count:N0} punktów.";
     }
 
+    /// <summary>
+    /// Podsumowanie do paska stanu: liczba punktow w scenie i zrodlo danych.
+    /// </summary>
+    public string StatusInfo
+    {
+        get
+        {
+            string points = $"Punkty: {PointCloud?.Count ?? 0:N0}";
+            if (IsLive)
+                return points + " | LIVE";
+            return Sequence is not null ? points + $" | Sekwencja: {Sequence.Name}" : points;
+        }
+    }
+
     /// <summary>Narzedzie pomiaru odleglosci miedzy dwoma punktami w widoku 3D.</summary>
     [ObservableProperty]
     public partial bool IsMeasuring { get; set; }
@@ -311,6 +325,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnPointCloudChanged(PointCloud? value)
     {
         RefreshTable();
+        OnPropertyChanged(nameof(StatusInfo));
 
         // Nowy plik ma inne wartosci danych, wiec zakres policzony dla
         // poprzedniego pliku przestaje obowiazywac. Zakres wpisany recznie

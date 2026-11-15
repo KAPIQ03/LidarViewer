@@ -26,6 +26,45 @@
 
     <Grid RowDefinitions="Auto,*,Auto">
         <StackPanel Grid.Row="0" x:Name="Toolbar" Margin="6,6,6,2" Spacing="2">
+            <Menu>
+                <MenuItem Header="_Plik">
+                    <MenuItem Header="Otwórz plik..." Click="OnBrowseClick" />
+                    <MenuItem Header="Otwórz sekwencję..." Click="OnBrowseSequenceClick" />
+                    <Separator />
+                    <MenuItem Header="Zapisz jako (PLY, PCD, LAS, CSV)..." Click="OnSaveAsClick" />
+                    <MenuItem Header="Zrzut widoku PNG..." Click="OnScreenshotClick" />
+                    <Separator />
+                    <MenuItem Header="Kalibracja Velodyne..." Click="OnBrowseCalibrationClick" />
+                    <Separator />
+                    <MenuItem Header="Zamknij" Click="OnExitClick" />
+                </MenuItem>
+                <MenuItem Header="_Widok">
+                    <MenuItem Header="Widok 3D (3)" Tag="Widok3D" Click="OnViewModeMenuClick" />
+                    <MenuItem Header="Widok 2D (2)" Tag="Widok2D" Click="OnViewModeMenuClick" />
+                    <MenuItem Header="Kamera z perspektywy lidaru (4)" Tag="Kamera" Click="OnViewModeMenuClick" />
+                    <MenuItem Header="Resetuj widok (R)" Click="OnResetViewClick" />
+                    <Separator />
+                    <MenuItem Header="Siatka" ToggleType="CheckBox" IsChecked="{Binding ShowGrid}" />
+                    <MenuItem Header="Osie" ToggleType="CheckBox" IsChecked="{Binding ShowAxes}" />
+                    <Separator />
+                    <MenuItem Header="Panel filtrów" ToggleType="CheckBox" IsChecked="{Binding IsFiltersPanelOpen}" />
+                    <MenuItem Header="Tabela punktów" ToggleType="CheckBox" IsChecked="{Binding IsTableOpen}" />
+                    <MenuItem Header="Log diagnostyczny" ToggleType="CheckBox" IsChecked="{Binding IsDiagnosticsOpen}" />
+                </MenuItem>
+                <MenuItem Header="_Live">
+                    <MenuItem Header="Start odbioru UDP" Command="{Binding StartLiveCommand}" />
+                    <MenuItem Header="Stop odbioru UDP" Command="{Binding StopLiveCommand}" />
+                    <Separator />
+                    <MenuItem Header="Nagrywaj..." Click="OnRecordClick" />
+                    <MenuItem Header="Zatrzymaj nagrywanie" Click="OnStopRecordingClick" />
+                </MenuItem>
+                <MenuItem Header="_Narzędzia">
+                    <MenuItem Header="Pomiar odległości" ToggleType="CheckBox" IsChecked="{Binding IsMeasuring}" />
+                </MenuItem>
+                <MenuItem Header="_Pomoc">
+                    <MenuItem Header="Skróty klawiszowe" Click="OnShortcutsClick" />
+                </MenuItem>
+            </Menu>
             <WrapPanel>
                 <TextBox Text="{Binding FilePath}" Width="320" Margin="0,0,6,4"
                          PlaceholderText="Ścieżka do pliku (.vtp, .vtk, .csv, .xyz, .ply, .pcd, .las)" />
@@ -263,6 +302,7 @@
                 <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding StatusInfo}" VerticalAlignment="Center" Foreground="#FFB0B0B0" />
                     <TextBlock Text="{Binding LiveInfo}" VerticalAlignment="Center" />
                     <Button Content="Resetuj widok" Click="OnResetViewClick" ToolTip.Tip="Skrót: R" />
                     <ToggleButton Content="Filtry" IsChecked="{Binding IsFiltersPanelOpen}" />
