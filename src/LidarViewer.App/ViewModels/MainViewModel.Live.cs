@@ -99,7 +99,7 @@ public partial class MainViewModel
         {
             IPacketDecoder decoder = LiveProtocol switch
             {
-                LiveProtocol.VelodyneVlp16 => new VelodyneVlp16Decoder(),
+                LiveProtocol.VelodyneVlp16 => new VelodyneDecoder(LoadCalibration()),
                 _ => new SimpleCloudDecoder(),
             };
 

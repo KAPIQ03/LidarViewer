@@ -18,9 +18,15 @@ public static class VoxelGridFilter
         var counts = new List<int>(count);
         var intensities = new List<byte>(count);
         var categories = new List<int>(count);
+        var laserIds = new List<byte>(count);
+        var azimuths = new List<float>(count);
+        var times = new List<float>(count);
 
         bool hasIntensity = cloud.Intensity is not null;
         bool hasCategory = cloud.Category is not null;
+        bool hasLaser = cloud.LaserId is not null;
+        bool hasAzimuth = cloud.Azimuth is not null;
+        bool hasTime = cloud.Time is not null;
 
         for (int i = 0; i < count; i++)
         {
@@ -40,12 +46,18 @@ public static class VoxelGridFilter
                 counts.Add(0);
                 intensities.Add(0);
                 categories.Add(0);
+                laserIds.Add(0);
+                azimuths.Add(0);
+                times.Add(0);
             }
 
             if (counts[slot] == 0)
             {
                 if (hasIntensity) intensities[slot] = cloud.Intensity![i];
                 if (hasCategory) categories[slot] = cloud.Category![i];
+                if (hasLaser) laserIds[slot] = cloud.LaserId![i];
+                if (hasAzimuth) azimuths[slot] = cloud.Azimuth![i];
+                if (hasTime) times[slot] = cloud.Time![i];
             }
 
             sums[slot * 3] += x;
@@ -57,6 +69,9 @@ public static class VoxelGridFilter
         var positions = new float[order.Count * 3];
         var intensity = hasIntensity ? new byte[order.Count] : null;
         var category = hasCategory ? new int[order.Count] : null;
+        var laserId = hasLaser ? new byte[order.Count] : null;
+        var azimuth = hasAzimuth ? new float[order.Count] : null;
+        var time = hasTime ? new float[order.Count] : null;
 
         for (int slot = 0; slot < order.Count; slot++)
         {
@@ -67,9 +82,19 @@ public static class VoxelGridFilter
 
             if (intensity is not null) intensity[slot] = intensities[slot];
             if (category is not null) category[slot] = categories[slot];
+            if (laserId is not null) laserId[slot] = laserIds[slot];
+            if (azimuth is not null) azimuth[slot] = azimuths[slot];
+            if (time is not null) time[slot] = times[slot];
         }
 
-        return new PointCloud(positions, intensity, category) { Origin = cloud.Origin };
+        // Atrybuty niezwiazane z pozycja bierzemy z pierwszego punktu woksela.
+        return new PointCloud(positions, intensity, category)
+        {
+            Origin = cloud.Origin,
+            LaserId = laserId,
+            Azimuth = azimuth,
+            Time = time,
+        };
     }
 
     private static long Key(float x, float y, float z, float voxelSize)

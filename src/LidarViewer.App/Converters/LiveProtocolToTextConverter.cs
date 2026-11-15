@@ -15,7 +15,7 @@ public sealed class LiveProtocolToTextConverter : IValueConverter
         value switch
         {
             LiveProtocol.Wlasny => "Własny (LVLR)",
-            LiveProtocol.VelodyneVlp16 => "Velodyne VLP-16",
+            LiveProtocol.VelodyneVlp16 => "Velodyne (kalibracja)",
             _ => string.Empty,
         };
 

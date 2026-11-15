@@ -61,6 +61,25 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OnBrowseCalibrationClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Wybierz plik kalibracji Velodyne (db.xml)",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Kalibracja Velodyne") { Patterns = ["*.xml"] },
+                FilePickerFileTypes.All,
+            ],
+        });
+
+        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path)
+            vm.CalibrationPath = path;
+    }
+
     private async void OnBrowseSequenceClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm) return;

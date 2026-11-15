@@ -38,7 +38,7 @@ public sealed record FilterDescriptor(
 /// </summary>
 public static class FilterCatalog
 {
-    private static readonly string[] ScalarNames = ["Intensity", "Distance", "Height"];
+    private static readonly string[] ScalarNames = ["Intensity", "Distance", "Height", "LaserId", "Azimuth", "Time"];
 
     private static readonly FilterParameterSpec[] ScalarRangeParameters =
     [

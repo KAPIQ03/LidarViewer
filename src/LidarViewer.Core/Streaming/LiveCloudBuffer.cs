@@ -16,6 +16,10 @@ public sealed class LiveCloudBuffer
 {
     private readonly float[] _positions;
     private readonly byte[] _intensity;
+    private readonly byte[] _laserId;
+    private readonly float[] _azimuth;
+    private readonly float[] _time;
+    private bool _hasLaserId, _hasAzimuth, _hasTime;
     private int _writeIndex;
     private int _count;
 
@@ -25,6 +29,9 @@ public sealed class LiveCloudBuffer
 
         _positions = new float[capacity * 3];
         _intensity = new byte[capacity];
+        _laserId = new byte[capacity];
+        _azimuth = new float[capacity];
+        _time = new float[capacity];
     }
 
     public int Capacity => _intensity.Length;
@@ -40,6 +47,10 @@ public sealed class LiveCloudBuffer
         int skip = Math.Max(0, cloud.Count - Capacity);
         int take = cloud.Count - skip;
 
+        _hasLaserId |= cloud.LaserId is not null;
+        _hasAzimuth |= cloud.Azimuth is not null;
+        _hasTime |= cloud.Time is not null;
+
         for (int i = 0; i < take; i++)
         {
             int source = (skip + i) * 3;
@@ -48,6 +59,9 @@ public sealed class LiveCloudBuffer
             _positions[target + 1] = cloud.Positions[source + 1];
             _positions[target + 2] = cloud.Positions[source + 2];
             _intensity[_writeIndex] = cloud.Intensity is { } intensity ? intensity[skip + i] : (byte)0;
+            _laserId[_writeIndex] = cloud.LaserId is { } laser ? laser[skip + i] : (byte)0;
+            _azimuth[_writeIndex] = cloud.Azimuth is { } azimuth ? azimuth[skip + i] : 0f;
+            _time[_writeIndex] = cloud.Time is { } time ? time[skip + i] : 0f;
 
             _writeIndex = (_writeIndex + 1) % Capacity;
             if (_count < Capacity)
@@ -59,31 +73,28 @@ public sealed class LiveCloudBuffer
     {
         var positions = new float[_count * 3];
         var intensity = new byte[_count];
+        var laserId = _hasLaserId ? new byte[_count] : null;
+        var azimuth = _hasAzimuth ? new float[_count] : null;
+        var time = _hasTime ? new float[_count] : null;
 
-        if (_count == Capacity)
+        // Bufor pelny - najstarszy punkt lezy pod wskaznikiem zapisu.
+        int start = _count == Capacity ? _writeIndex : 0;
+        int first = Math.Min(_count, Capacity - start);
+        int rest = _count - first;
+
+        CopyRange(start, 0, first);
+        if (rest > 0)
+            CopyRange(0, first, rest);
+
+        return new PointCloud(positions, intensity) { LaserId = laserId, Azimuth = azimuth, Time = time };
+
+        void CopyRange(int source, int destination, int length)
         {
-            // Bufor jest pelny - najstarszy punkt lezy pod wskaznikiem zapisu.
-            CopyFrom(_writeIndex, 0);
-        }
-        else
-        {
-            CopyFrom(0, 0);
-        }
-
-        return new PointCloud(positions, intensity);
-
-        void CopyFrom(int start, int destination)
-        {
-            int first = Math.Min(_count, Capacity - start);
-            Array.Copy(_positions, start * 3, positions, destination * 3, first * 3);
-            Array.Copy(_intensity, start, intensity, destination, first);
-
-            int rest = _count - first;
-            if (rest <= 0)
-                return;
-
-            Array.Copy(_positions, 0, positions, (destination + first) * 3, rest * 3);
-            Array.Copy(_intensity, 0, intensity, destination + first, rest);
+            Array.Copy(_positions, source * 3, positions, destination * 3, length * 3);
+            Array.Copy(_intensity, source, intensity, destination, length);
+            if (laserId is not null) Array.Copy(_laserId, source, laserId, destination, length);
+            if (azimuth is not null) Array.Copy(_azimuth, source, azimuth, destination, length);
+            if (time is not null) Array.Copy(_time, source, time, destination, length);
         }
     }
 
@@ -91,5 +102,6 @@ public sealed class LiveCloudBuffer
     {
         _writeIndex = 0;
         _count = 0;
+        _hasLaserId = _hasAzimuth = _hasTime = false;
     }
 }

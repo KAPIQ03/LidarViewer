@@ -89,13 +89,24 @@ public partial class MainViewModel
     /// </summary>
     private async Task LoadPcapAsync(string path)
     {
-        Status = "Importowanie pcap (Velodyne VLP-16)...";
+        VelodyneCalibration calibration;
+        try
+        {
+            calibration = LoadCalibration();
+        }
+        catch (Exception ex)
+        {
+            Status = $"Błąd kalibracji: {ex.Message}";
+            return;
+        }
+
+        Status = $"Importowanie pcap (Velodyne {calibration.Name})...";
         string directory = System.IO.Path.Combine(
             System.IO.Path.GetTempPath(), "LidarViewer", "pcap-" + Guid.NewGuid().ToString("N"));
 
         try
         {
-            await Task.Run(() => VelodynePcapImporter.Import(path, directory));
+            await Task.Run(() => VelodynePcapImporter.Import(path, directory, calibration: calibration));
         }
         catch (Exception ex)
         {

@@ -10,6 +10,21 @@ public sealed class PointCloud
 
     public int[]? Category { get; }
 
+    /// <summary>
+    /// Numer lasera (kanalu) czujnika dla kazdego punktu. null, gdy zrodlo go nie zna.
+    /// </summary>
+    public byte[]? LaserId { get; init; }
+
+    /// <summary>
+    /// Azymut czujnika w stopniach (0-360) w chwili pomiaru punktu.
+    /// </summary>
+    public float[]? Azimuth { get; init; }
+
+    /// <summary>
+    /// Czas pomiaru w sekundach wzgledem poczatku chmury (klatki).
+    /// </summary>
+    public float[]? Time { get; init; }
+
     public (double X, double Y, double Z) Origin { get; init; }
 
     public int Count => Positions.Length / 3;
@@ -61,6 +76,9 @@ public sealed class PointCloud
             ScalarKind.Intensity => BuildIntensityAttribute(),
             ScalarKind.Distance => BuildDistanceAttribute(),
             ScalarKind.Height => BuildHeightAttribute(),
+            ScalarKind.LaserId => LaserId is null ? null : ToAttribute("laser_id", LaserId),
+            ScalarKind.Azimuth => Azimuth is null ? null : new PointAttribute("azimuth", Azimuth),
+            ScalarKind.Time => Time is null ? null : new PointAttribute("time", Time),
             _ => null,
         };
 
@@ -68,6 +86,15 @@ public sealed class PointCloud
             _attributeCache[kind] = computed;
 
         return computed;
+    }
+
+    private static PointAttribute ToAttribute(string name, byte[] source)
+    {
+        var values = new float[source.Length];
+        for (int i = 0; i < source.Length; i++)
+            values[i] = source[i];
+
+        return new PointAttribute(name, values);
     }
 
     private PointAttribute? BuildIntensityAttribute()
@@ -106,25 +133,52 @@ public sealed class PointCloud
 
     public PointCloud WithoutInvalidPoints()
     {
+        var keep = new bool[Count];
         int valid = 0;
         for (int i = 0; i < Count; i++)
-            if (IsValid(i)) valid++;
-        if (valid == Count)
-            return this;
+        {
+            keep[i] = IsValid(i);
+            if (keep[i]) valid++;
+        }
 
-        var positions = new float[valid * 3];
-        var intensity = Intensity is null ? null : new byte[valid];
-        var category = Category is null ? null : new int[valid];
+        return valid == Count ? this : Take(keep, valid);
+    }
+
+    /// <summary>
+    /// Nowa chmura z punktow oznaczonych w keep (kept = ich liczba). Przenosi wszystkie atrybuty
+    /// punktow oraz Origin - jedyne miejsce, ktore trzeba rozszerzyc przy nowym atrybucie.
+    /// </summary>
+    public PointCloud Take(bool[] keep, int kept)
+    {
+        ArgumentNullException.ThrowIfNull(keep);
+
+        var positions = new float[kept * 3];
+        var intensity = Intensity is null ? null : new byte[kept];
+        var category = Category is null ? null : new int[kept];
+        var laserId = LaserId is null ? null : new byte[kept];
+        var azimuth = Azimuth is null ? null : new float[kept];
+        var time = Time is null ? null : new float[kept];
+
         int o = 0;
         for (int i = 0; i < Count; i++)
         {
-            if (!IsValid(i)) continue;
+            if (!keep[i]) continue;
             Array.Copy(Positions, i * 3, positions, o * 3, 3);
             if (intensity != null) intensity[o] = Intensity![i];
             if (category != null) category[o] = Category![i];
+            if (laserId != null) laserId[o] = LaserId![i];
+            if (azimuth != null) azimuth[o] = Azimuth![i];
+            if (time != null) time[o] = Time![i];
             o++;
         }
-        return new PointCloud(positions, intensity, category) { Origin = Origin };
+
+        return new PointCloud(positions, intensity, category)
+        {
+            Origin = Origin,
+            LaserId = laserId,
+            Azimuth = azimuth,
+            Time = time,
+        };
     }
 
     private bool IsValid(int i) =>

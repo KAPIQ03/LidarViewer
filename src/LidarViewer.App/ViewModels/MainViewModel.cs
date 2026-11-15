@@ -138,6 +138,25 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Plik kalibracji Velodyne (db.xml). Pusty = wbudowana kalibracja VLP-16. Uzywany przy
+    /// otwieraniu nagran pcap i w trybie live Velodyne.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalibrationLabel))]
+    public partial string CalibrationPath { get; set; } = "";
+
+    public string CalibrationLabel => string.IsNullOrWhiteSpace(CalibrationPath)
+        ? "Kalibracja: VLP-16 (wbudowana)"
+        : "Kalibracja: " + System.IO.Path.GetFileName(CalibrationPath);
+
+    public IRelayCommand ResetCalibrationCommand { get; }
+
+    private VelodyneCalibration LoadCalibration() =>
+        string.IsNullOrWhiteSpace(CalibrationPath)
+            ? VelodyneCalibration.Vlp16
+            : VelodyneCalibrationReader.Read(CalibrationPath);
+
     [ObservableProperty]
     public partial string Status { get; set; } = "Podaj ścieżkę do pliku .vtp.";
 
@@ -182,6 +201,7 @@ public partial class MainViewModel : ViewModelBase
         LoadSequenceCommand = new RelayCommand<string>(LoadSequenceCore);
         StartLiveCommand = new RelayCommand(StartLiveCore);
         StopLiveCommand = new RelayCommand(StopLiveCore);
+        ResetCalibrationCommand = new RelayCommand(() => CalibrationPath = "");
         Speed = Speeds[2];
     }
 
