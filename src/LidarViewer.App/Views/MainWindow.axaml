@@ -47,7 +47,6 @@
                 <MenuItem Header="_Widok">
                     <MenuItem Header="Widok 3D (3)" Tag="Widok3D" Click="OnViewModeClick" />
                     <MenuItem Header="Widok 2D (2)" Tag="Widok2D" Click="OnViewModeClick" />
-                    <MenuItem Header="Kamera z perspektywy lidaru (4)" Tag="Kamera" Click="OnViewModeClick" />
                     <MenuItem Header="Resetuj widok (R)" Click="OnResetViewClick" />
                     <Separator />
                     <MenuItem Header="Siatka" ToggleType="CheckBox" IsChecked="{Binding ShowGrid, Mode=TwoWay}" />
@@ -109,20 +108,12 @@
                                 <TextBlock Text="3D" VerticalAlignment="Center" />
                             </StackPanel>
                         </ToggleButton>
-                        <ToggleButton Classes="seg" Tag="Widok2D" Click="OnViewModeClick"
+                        <ToggleButton Classes="seg" CornerRadius="0,8,8,0" Tag="Widok2D" Click="OnViewModeClick"
                                       IsChecked="{Binding ViewMode, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Widok2D}"
                                       ToolTip.Tip="Rzut 2D (2)">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <mi:MaterialIcon Kind="VectorSquare" Width="18" Height="18" />
                                 <TextBlock Text="2D" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </ToggleButton>
-                        <ToggleButton Classes="seg" CornerRadius="0,8,8,0" Tag="Kamera" Click="OnViewModeClick"
-                                      IsChecked="{Binding ViewMode, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Kamera}"
-                                      ToolTip.Tip="Widok z perspektywy lidaru (4)">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <mi:MaterialIcon Kind="VideoOutline" Width="18" Height="18" />
-                                <TextBlock Text="Kamera" VerticalAlignment="Center" />
                             </StackPanel>
                         </ToggleButton>
                     </StackPanel>
@@ -243,7 +234,6 @@
                                         ColorSettings="{Binding ColorSettings}"
                                         AutoFitCamera="{Binding AutoFitCamera}"
                                         FitVersion="{Binding FitVersion}"
-                                        SensorView="{Binding IsSensorView}"
                                         PointSize="{Binding PointSize}" ShowGrid="{Binding ShowGrid}"
                                         ShowAxes="{Binding ShowAxes}"
                                         MeasureMode="{Binding IsMeasuring}"

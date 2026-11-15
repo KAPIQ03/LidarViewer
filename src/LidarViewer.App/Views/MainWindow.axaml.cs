@@ -71,13 +71,12 @@ public partial class MainWindow : Window
             ("R", "Resetuj i dopasuj widok"),
             ("3", "Widok 3D"),
             ("2", "Rzut 2D"),
-            ("4", "Kamera z perspektywy lidaru"),
             ("Spacja", "Odtwarzanie / pauza"),
             ("←  →", "Poprzednia / następna klatka"),
             ("Home  End", "Pierwsza / ostatnia klatka"),
             ("Mysz: lewy + ruch", "Obrót widoku"),
             ("Mysz: prawy lub Shift + ruch", "Przesunięcie widoku"),
-            ("Kółko myszy", "Przybliżenie (w trybie Kamera: kąt widzenia)"),
+            ("Kółko myszy", "Przybliżenie"),
             ("Kostka w rogu", "Kliknij ścianę, aby spojrzeć wzdłuż osi X / Y / Z"),
         ];
 
@@ -370,7 +369,7 @@ public partial class MainWindow : Window
         View2D.ResetView();
     }
 
-    // Skroty klawiszowe: R - reset widoku, 2 / 3 / 4 - tryby widoku, spacja - odtwarzanie,
+    // Skroty klawiszowe: R - reset widoku, 2 / 3 - tryby widoku, spacja - odtwarzanie,
     // strzalki - krok klatki, Home/End - pierwsza/ostatnia klatka. W polach tekstowych skroty
     // nie dzialaja (klawisze trafiaja do wpisywania), a klawisze nawigacji nie przeszkadzaja
     // listom i suwakom.
@@ -393,9 +392,6 @@ public partial class MainWindow : Window
                 break;
             case Key.D3:
                 _vm.ViewMode = ViewMode.Widok3D;
-                break;
-            case Key.D4:
-                _vm.ViewMode = ViewMode.Kamera;
                 break;
             case Key.Space:
                 _vm.PlayPauseCommand.Execute(null);

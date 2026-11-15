@@ -4,5 +4,4 @@ public enum ViewMode
 {
     Widok3D,
     Widok2D,
-    Kamera,
 }

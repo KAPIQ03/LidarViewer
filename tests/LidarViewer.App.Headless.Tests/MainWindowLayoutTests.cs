@@ -347,14 +347,12 @@ public class MainWindowLayoutTests
     }
 
     [AvaloniaFact]
-    public void ViewCubeIsVisibleOnlyInOrbit3DMode()
+    public void ViewCubeIsVisibleOnlyIn3DMode()
     {
         var (window, vm) = ShowWindow();
 
         vm.ViewMode = ViewMode.Widok3D;
         Assert.True(vm.ShowViewCube);
-        vm.ViewMode = ViewMode.Kamera;
-        Assert.False(vm.ShowViewCube);
         vm.ViewMode = ViewMode.Widok2D;
         Assert.False(vm.ShowViewCube);
 

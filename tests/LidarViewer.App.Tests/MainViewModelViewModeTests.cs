@@ -38,32 +38,6 @@ public class MainViewModelViewModeTests
         Assert.Contains(nameof(MainViewModel.Is3D), changed);
     }
 
-    [Fact]
-    public void SwitchToCamera_UsesOpenGlViewInSensorMode()
-    {
-        var vm = new MainViewModel();
-        var changed = new List<string>();
-        vm.PropertyChanged += OnPropertyChanged(changed);
-
-        vm.ViewMode = ViewMode.Kamera;
-
-        Assert.True(vm.Is3D);
-        Assert.True(vm.IsSensorView);
-        Assert.False(vm.Is2D);
-        Assert.Contains(nameof(MainViewModel.IsSensorView), changed);
-    }
-
-    [Fact]
-    public void SwitchBackTo3D_LeavesSensorMode()
-    {
-        var vm = new MainViewModel { ViewMode = ViewMode.Kamera };
-
-        vm.ViewMode = ViewMode.Widok3D;
-
-        Assert.True(vm.Is3D);
-        Assert.False(vm.IsSensorView);
-    }
-
     private static PropertyChangedEventHandler OnPropertyChanged(List<string> changed) =>
         (_, e) =>
         {

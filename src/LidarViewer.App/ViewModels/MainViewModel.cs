@@ -41,19 +41,15 @@ public partial class MainViewModel : ViewModelBase
     public partial ProjectionPlane Plane { get; set; } = ProjectionPlane.XY;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Is3D), nameof(Is2D), nameof(IsSensorView), nameof(ShowViewCube))]
+    [NotifyPropertyChangedFor(nameof(Is3D), nameof(Is2D))]
     public partial ViewMode ViewMode { get; set; } = ViewMode.Widok3D;
 
     public ViewMode[] ViewModes { get; } = Enum.GetValues<ViewMode>();
 
-    /// <summary>Widok OpenGL jest wspolny dla trybow 3D i Kamera.</summary>
-    public bool Is3D => ViewMode is ViewMode.Widok3D or ViewMode.Kamera;
+    public bool Is3D => ViewMode == ViewMode.Widok3D;
 
-    /// <summary>Tryb Kamera: widok z perspektywy lidaru, obracany myszka.</summary>
-    public bool IsSensorView => ViewMode == ViewMode.Kamera;
-
-    /// <summary>Kostka orientacji ma sens tylko w widoku orbitalnym 3D.</summary>
-    public bool ShowViewCube => ViewMode == ViewMode.Widok3D;
+    /// <summary>Kostka orientacji jest czescia widoku 3D.</summary>
+    public bool ShowViewCube => Is3D;
     public bool Is2D => ViewMode == ViewMode.Widok2D;
 
     public ProjectionPlane[] Planes { get; } = Enum.GetValues<ProjectionPlane>();

@@ -103,15 +103,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         ViewPitch = _camera.Pitch;
     }
 
-    public static readonly StyledProperty<bool> SensorViewProperty =
-        AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(SensorView));
-
-    public bool SensorView
-    {
-        get => GetValue(SensorViewProperty);
-        set => SetValue(SensorViewProperty, value);
-    }
-
     public static readonly StyledProperty<double> PointSizeProperty =
         AvaloniaProperty.Register<PointCloudView3D, double>(nameof(PointSize), 2.0);
 
@@ -217,7 +208,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
     private bool _uploadPending;
     private int _pointCount;
     private readonly OrbitCamera _camera = new();
-    private readonly SensorCamera _sensor = new();
     private Point _lastPointer;
     private bool _rotating, _panning;
     private int _viewportHeight = 1;
@@ -247,7 +237,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
             if (e.NewValue is false && view._measurePoints.Count > 0)
                 view.ClearMeasurement();
         });
-        SensorViewProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
         PointSizeProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
         ShowGridProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
         ShowAxesProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
@@ -348,7 +337,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
         if (_pointCount > 0)
         {
             float aspect = (float)width / height;
-            Matrix4x4 mvp = SensorView ? _sensor.ViewProjection(aspect) : _camera.ViewProjection(aspect);
+            Matrix4x4 mvp = _camera.ViewProjection(aspect);
 
             gl.UseProgram(_program);
             gl.UniformMatrix4(_mvpLocation, 1, false, (float*)&mvp);
@@ -426,10 +415,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
     /// </summary>
     public void SetViewDirection(Vector3 direction)
     {
-        if (SensorView)
-            _sensor.LookAlong(direction);
-        else
-            _camera.LookAlong(direction);
+        _camera.LookAlong(direction);
 
         SyncView();
         RequestNextFrameRendering();
@@ -466,7 +452,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
     public void ResetView()
     {
         _camera.Reset();
-        _sensor.Reset();
         SyncView();
         _cameraFitted = false;
 
@@ -475,7 +460,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
             _anchor = cloud.Center;
             _uploadPending = true;
             _camera.FitTo(Vector3.Zero, cloud.Radius);
-            _sensor.FitTo(SensorPosition(cloud), cloud.Radius);
         }
 
         RequestNextFrameRendering();
@@ -587,7 +571,6 @@ public sealed class PointCloudView3D : OpenGlControlBase
         if (fit)
         {
             _camera.FitTo(Vector3.Zero, cloud.Radius);
-            _sensor.FitTo(SensorPosition(cloud), cloud.Radius);
             _cameraFitted = true;
         }
 
@@ -638,7 +621,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
         int width = Math.Max(1, (int)(Bounds.Width * scale));
         int height = Math.Max(1, (int)(Bounds.Height * scale));
         float aspect = (float)width / height;
-        Matrix4x4 viewProjection = SensorView ? _sensor.ViewProjection(aspect) : _camera.ViewProjection(aspect);
+        Matrix4x4 viewProjection = _camera.ViewProjection(aspect);
 
         int index = PointPicker.Pick(
             _renderPositions, viewProjection, (float)(position.X * scale), (float)(position.Y * scale),
@@ -682,19 +665,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
         var d = p - _lastPointer;
         _lastPointer = p;
 
-        if (_rotating && SensorView)
-        {
-            // "Chwytanie" sceny: obrot proporcjonalny do kata widzenia, wiec punkt pod kursorem podaza za myszka.
-            double scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
-            float radiansPerPixel = _sensor.FovY / Math.Max(_viewportHeight, 1) * (float)scale;
-            _sensor.Rotate((float)d.X * radiansPerPixel, (float)d.Y * radiansPerPixel);
-        }
-        else if (SensorView)
-        {
-            // Przesuwanie nie ma sensu, gdy kamera stoi w miejscu czujnika.
-            return;
-        }
-        else if (_rotating)
+        if (_rotating)
         {
             _camera.Rotate(-(float)d.X * 0.01f, (float)d.Y * 0.01f);
             SyncView();
@@ -712,10 +683,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
     {
         base.OnPointerWheelChanged(e);
         ReportFirstPointerEvent("kółko myszy");
-        if (SensorView)
-            _sensor.Zoom(MathF.Pow(0.9f, (float)e.Delta.Y));
-        else
-            _camera.Zoom(MathF.Pow(0.9f, (float)e.Delta.Y));
+        _camera.Zoom(MathF.Pow(0.9f, (float)e.Delta.Y));
         RequestNextFrameRendering();
     }
 
