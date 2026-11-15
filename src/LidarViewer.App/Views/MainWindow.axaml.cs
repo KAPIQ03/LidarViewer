@@ -198,7 +198,7 @@ public partial class MainWindow : Window
         View2D.ResetView();
     }
 
-    // Skroty klawiszowe: R - reset widoku, 2 i 3 - widok plaszczyzny,
+    // Skroty klawiszowe: R - reset widoku, 2 - widok plaszczyzny, 3 - 3D, 4 - kamera z perspektywy lidaru,
     // spacja - odtwarzanie. W polach tekstowych skroty nie dzialaja, bo
     // klawisze musza trafic do wpisywania.
     protected override void OnKeyDown(KeyEventArgs e)
@@ -218,6 +218,9 @@ public partial class MainWindow : Window
                 break;
             case Key.D3:
                 _vm.ViewMode = ViewMode.Widok3D;
+                break;
+            case Key.D4:
+                _vm.ViewMode = ViewMode.Kamera;
                 break;
             case Key.Space:
                 _vm.PlayPauseCommand.Execute(null);

@@ -112,6 +112,7 @@
                                         ColorSettings="{Binding ColorSettings}"
                                         AutoFitCamera="{Binding AutoFitCamera}"
                                         FitVersion="{Binding FitVersion}"
+                                        SensorView="{Binding IsSensorView}"
                                         Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
                     <c:PointCloudView x:Name="View2D" IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}"
                                       Plane="{Binding Plane}" ColorSettings="{Binding ColorSettings}"
