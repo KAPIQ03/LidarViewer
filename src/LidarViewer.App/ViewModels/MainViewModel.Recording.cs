@@ -19,6 +19,9 @@ namespace LidarViewer.App.ViewModels;
 public partial class MainViewModel
 {
     private SequenceRecorder? _recorder;
+    private PcapWriter? _pcapWriter;
+    private string? _pcapPath;
+    private volatile string? _pcapError;
 
     /// <summary>
     /// Odstep miedzy nagranymi klatkami w sekundach. Klatka to cala chmura
@@ -32,8 +35,19 @@ public partial class MainViewModel
     /// </summary>
     public bool IsRecording
     {
-        get => _recorder is not null;
+        get => _recorder is not null || _pcapWriter is not null;
     }
+
+    /// <summary>
+    /// Czy nagranie jest zapisem surowych pakietow do pliku .pcap (natywny format Velodyne), a nie
+    /// zestawem klatek PLY. Dotyczy trybu live z protokolem Velodyne.
+    /// </summary>
+    public bool RecordsRawPackets => IsLive && LiveProtocol == LiveProtocol.VelodyneVlp16;
+
+    /// <summary>
+    /// Liczba zapisanych pakietow w nagraniu pcap.
+    /// </summary>
+    public long RecordedPacketCount => _pcapWriter?.PacketCount ?? 0;
 
     /// <summary>
     /// Czy uzytkownik moze zaczac nowe nagrywanie. Nagrywanie wymaga
@@ -46,8 +60,9 @@ public partial class MainViewModel
     /// </summary>
     public int RecordedFrameCount => _recorder?.FrameCount ?? 0;
 
-    public string RecordInfo => IsRecording
-        ? $"Nagrane klatki: {RecordedFrameCount:N0}"
+    public string RecordInfo =>
+        _pcapWriter is not null ? $"Nagrane pakiety: {RecordedPacketCount:N0}"
+        : _recorder is not null ? $"Nagrane klatki: {RecordedFrameCount:N0}"
         : string.Empty;
 
     /// <summary>
@@ -98,11 +113,77 @@ public partial class MainViewModel
     }
 
     /// <summary>
+    /// Zaczyna nagrywanie surowych pakietow live do pliku .pcap (otwieranym tez przez Wireshark i VeloView).
+    /// Wymaga trwajacego odbioru UDP.
+    /// </summary>
+    public void StartPcapRecording(string path)
+    {
+        if (IsRecording)
+            return;
+
+        if (!IsLive)
+        {
+            Status = "Błąd: nagrywanie pcap wymaga włączonego odbioru UDP.";
+            return;
+        }
+
+        try
+        {
+            _pcapError = null;
+            _pcapPath = path;
+            _pcapWriter = new PcapWriter(path, destinationPort: (ushort)(_receiver?.Port ?? LivePort));
+            OnPropertyChanged(nameof(IsRecording));
+            OnPropertyChanged(nameof(CanStartRecording));
+            OnPropertyChanged(nameof(RecordInfo));
+            Status = $"Nagrywanie pakietów do {path}.";
+        }
+        catch (Exception ex)
+        {
+            _pcapWriter = null;
+            Status = $"Błąd: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Dopisuje surowy datagram do nagrania pcap. Wolane z watku odbioru, wiec bledy dysku tylko zapamietuje.
+    /// </summary>
+    private void RecordRawPacket(ReadOnlyMemory<byte> payload, DateTimeOffset time)
+    {
+        PcapWriter? writer = _pcapWriter;
+        if (writer is null)
+            return;
+
+        try
+        {
+            writer.Write(payload.Span, time);
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+        {
+            _pcapError = ex.Message;
+        }
+    }
+
+    /// <summary>
     /// Konczy nagrywanie i zapisuje manifest, dzieki czemu nagranie da sie
     /// odtworzyc w aplikacji.
     /// </summary>
     public async Task StopRecordingAsync()
     {
+        if (_pcapWriter is { } pcapWriter)
+        {
+            _pcapWriter = null;
+            string? error = _pcapError;
+            long packets = pcapWriter.PacketCount;
+            pcapWriter.Dispose();
+            OnPropertyChanged(nameof(IsRecording));
+            OnPropertyChanged(nameof(CanStartRecording));
+            OnPropertyChanged(nameof(RecordInfo));
+            Status = error is null
+                ? $"Zapisano nagranie pcap: {_pcapPath} ({packets:N0} pakietów)."
+                : $"Błąd zapisu pcap: {error}";
+            return;
+        }
+
         if (_recorder is null)
             return;
 

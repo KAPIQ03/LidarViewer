@@ -69,6 +69,12 @@ public sealed class UdpCloudReceiver : IDisposable
     /// </summary>
     public event Action<Exception>? Faulted;
 
+    /// <summary>
+    /// Surowy datagram tuz po odbiorze, jeszcze przed dekodowaniem (takze nierozpoznany). Sluzy do
+    /// nagrywania pcap. Wywolywane z watku odbioru - handler musi byc szybki.
+    /// </summary>
+    public event Action<ReadOnlyMemory<byte>, DateTimeOffset>? PacketReceived;
+
     public void Start()
     {
         if (IsRunning)
@@ -119,6 +125,8 @@ public sealed class UdpCloudReceiver : IDisposable
                 Faulted?.Invoke(ex);
                 return;
             }
+
+            PacketReceived?.Invoke(result.Buffer, DateTimeOffset.UtcNow);
 
             if (!_decoder.TryDecode(result.Buffer, out PointCloud? cloud) || cloud is null)
             {

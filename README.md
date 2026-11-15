@@ -103,6 +103,9 @@ Nagranie sieciowe z Velodyne VLP-16 (`.pcap` lub `.pcapng`, pakiety danych UDP 1
 otworzyc wprost przyciskiem wyboru pliku: aplikacja dzieli je na klatki (jeden obrot czujnika =
 jedna klatka), zapisuje jako sekwencje w katalogu tymczasowym i odtwarza jak kazda inna.
 
+Nagrywanie w trybie live z protokolem Velodyne zapisuje surowe pakiety do jednego pliku `.pcap`
+(da sie go otworzyc w aplikacji, Wireshark i VeloView); protokol wlasny zapisuje klatki PLY.
+
 Pasek odtwarzania ma tez krok klatka po klatce (←/→), skok do pierwszej i ostatniej klatki (Home/End),
 wybor zakresu klatek, tempo od 0.1x oraz "slad" - doklejanie do 10 poprzednich klatek do widoku.
 

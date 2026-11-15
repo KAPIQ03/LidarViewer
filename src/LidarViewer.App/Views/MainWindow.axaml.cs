@@ -116,6 +116,22 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainViewModel vm) return;
 
+        // Protokol Velodyne zapisuje surowe pakiety do jednego pliku .pcap (jak VeloView).
+        if (vm.RecordsRawPackets)
+        {
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Zapisz nagranie pcap",
+                SuggestedFileName = $"nagranie-{DateTime.Now:yyyyMMdd-HHmmss}.pcap",
+                DefaultExtension = "pcap",
+                FileTypeChoices = [new FilePickerFileType("Nagranie pcap") { Patterns = ["*.pcap"] }],
+            });
+
+            if (file?.TryGetLocalPath() is { } pcapPath)
+                vm.StartPcapRecording(pcapPath);
+            return;
+        }
+
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
             Title = "Wybierz katalog nagrania",

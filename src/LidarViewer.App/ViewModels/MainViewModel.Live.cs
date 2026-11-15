@@ -106,6 +106,7 @@ public partial class MainViewModel
             var receiver = new UdpCloudReceiver(LivePort, decoder, LiveBufferCapacity);
             receiver.CloudUpdated += ReceiveLiveCloud;
             receiver.Faulted += ReceiveLiveFault;
+            receiver.PacketReceived += RecordRawPacket;
             receiver.Start();
 
             _receiver = receiver;
@@ -125,6 +126,7 @@ public partial class MainViewModel
 
         _receiver.CloudUpdated -= ReceiveLiveCloud;
         _receiver.Faulted -= ReceiveLiveFault;
+        _receiver.PacketReceived -= RecordRawPacket;
         _receiver.Dispose();
         _receiver = null;
         IsLive = false;
@@ -224,6 +226,7 @@ public partial class MainViewModel
 
         _receiver.CloudUpdated -= ReceiveLiveCloud;
         _receiver.Faulted -= ReceiveLiveFault;
+        _receiver.PacketReceived -= RecordRawPacket;
         _receiver.Dispose();
         _receiver = null;
 
