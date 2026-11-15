@@ -470,7 +470,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
     /// lezy wewnatrz chmury (nagrania lidaru), w przeciwnym razie srodek chmury (np. pliki LAS w ukladzie globalnym).
     /// </summary>
     private Vector3 SensorPosition(PointCloud cloud) =>
-        cloud.Center.Length() <= cloud.Radius ? -_anchor : Vector3.Zero;
+        SensorLocator.Locate(cloud) is { } sensor ? sensor - _anchor : Vector3.Zero;
 
     /// <summary>
     /// Osie i siatka dla biezacej chmury: jeden bufor, osie pierwsze, potem siatka.
