@@ -142,4 +142,58 @@ public class CloudColorsTests
         Assert.Equal([(byte)0, (byte)0, (byte)0, (byte)255], rgba[..4]);
         Assert.Equal([(byte)128, (byte)128, (byte)128, (byte)255], rgba[4..]);
     }
+
+    [Fact]
+    public void Build_LaserIdMode_ColorsByLaser()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f, 1f, 1f, 1f]) { LaserId = [0, 15] };
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.LaserId,
+            Map = ColormapKind.Grayscale,
+            Min = 0f,
+            Max = 15f,
+        });
+
+        Assert.Equal((byte)0, rgba[0]);
+        Assert.Equal((byte)255, rgba[4]);
+    }
+
+    [Theory]
+    [InlineData(ColorMode.LaserId)]
+    [InlineData(ColorMode.Azimuth)]
+    [InlineData(ColorMode.Time)]
+    public void Build_MissingSensorAttribute_FallsBackToGray(ColorMode mode)
+    {
+        var cloud = new PointCloud([0f, 0f, 0f]);
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings { Mode = mode });
+
+        Assert.Equal([(byte)128, (byte)128, (byte)128, (byte)255], rgba);
+    }
+
+    [Fact]
+    public void Build_HeightMode_UsesWorldZ()
+    {
+        var cloud = new PointCloud([0f, 0f, 0f]) { Origin = (0, 0, 10) };
+
+        var rgba = CloudColors.Build(cloud, new ColorSettings
+        {
+            Mode = ColorMode.Height,
+            Map = ColormapKind.Grayscale,
+            Min = 0f,
+            Max = 10f,
+        });
+
+        Assert.Equal((byte)255, rgba[0]);
+    }
+
+    [Fact]
+    public void ColorModeMapsToScalarKind()
+    {
+        Assert.Null(ColorMode.Solid.ToScalarKind());
+        Assert.Equal(ScalarKind.Azimuth, ColorMode.Azimuth.ToScalarKind());
+        Assert.Equal(ScalarKind.Time, ColorMode.Time.ToScalarKind());
+    }
 }

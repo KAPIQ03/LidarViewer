@@ -26,9 +26,7 @@ public static class CloudColors
             return rgba;
         }
 
-        ScalarKind kind = settings.Mode == ColorMode.Intensity
-            ? ScalarKind.Intensity
-            : ScalarKind.Distance;
+        ScalarKind kind = settings.Mode.ToScalarKind() ?? ScalarKind.Distance;
 
         var attribute = cloud.GetAttribute(kind);
         if (attribute is null)

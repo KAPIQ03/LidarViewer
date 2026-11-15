@@ -110,13 +110,16 @@ public partial class MainViewModel : ViewModelBase
     {
         ColorMode.Intensity => "Intensywność",
         ColorMode.Distance => "Odległość od sensora",
+        ColorMode.Height => "Wysokość (Z)",
+        ColorMode.LaserId => "Numer lasera",
+        ColorMode.Azimuth => "Azymut [°]",
+        ColorMode.Time => "Czas w klatce [s]",
         _ => "Jednolity",
     };
 
     public bool HasIntensity => PointCloud?.GetAttribute(ScalarKind.Intensity) is not null;
 
-    private ScalarKind CurrentScalarKind =>
-        ColorMode == ColorMode.Intensity ? ScalarKind.Intensity : ScalarKind.Distance;
+    private ScalarKind CurrentScalarKind => ColorMode.ToScalarKind() ?? ScalarKind.Distance;
 
     public string? ColorWarning
     {
@@ -127,6 +130,9 @@ public partial class MainViewModel : ViewModelBase
 
             if (ColorMode == ColorMode.Solid)
                 return null;
+
+            if (PointCloud is not null && PointCloud.GetAttribute(CurrentScalarKind) is null)
+                return $"Te dane nie zawierają atrybutu „{LegendTitle}” - punkty są pokazane na szaro.";
 
             if (ColorSettings.IsDegenerate)
                 return "Zakres kolorów jest pusty (min >= max) - wszystkie punkty mają jeden kolor.";
@@ -157,6 +163,18 @@ public partial class MainViewModel : ViewModelBase
         string.IsNullOrWhiteSpace(CalibrationPath)
             ? VelodyneCalibration.Vlp16
             : VelodyneCalibrationReader.Read(CalibrationPath);
+
+    /// <summary>Rozmiar punktu w widoku 3D (piksele).</summary>
+    [ObservableProperty]
+    public partial double PointSize { get; set; } = 2.0;
+
+    /// <summary>Kolowa siatka pomiarowa w widoku 3D.</summary>
+    [ObservableProperty]
+    public partial bool ShowGrid { get; set; } = true;
+
+    /// <summary>Osie ukladu wspolrzednych w widoku 3D.</summary>
+    [ObservableProperty]
+    public partial bool ShowAxes { get; set; } = true;
 
     [ObservableProperty]
     public partial string Status { get; set; } = "Podaj ścieżkę do pliku .vtp.";

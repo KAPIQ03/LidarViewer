@@ -44,6 +44,14 @@
                           Margin="0,0,6,4" VerticalAlignment="Center" IsVisible="{Binding Is2D}" />
             </WrapPanel>
 
+            <WrapPanel IsVisible="{Binding Is3D}">
+                <TextBlock Text="Punkt:" VerticalAlignment="Center" Margin="0,0,6,4" />
+                <Slider Width="110" Minimum="1" Maximum="10" Value="{Binding PointSize}" Margin="0,0,10,4"
+                        VerticalAlignment="Center" ToolTip.Tip="Rozmiar punktu" />
+                <CheckBox Content="Siatka" IsChecked="{Binding ShowGrid}" Margin="0,0,6,4" VerticalAlignment="Center" />
+                <CheckBox Content="Osie" IsChecked="{Binding ShowAxes}" Margin="0,0,6,4" VerticalAlignment="Center" />
+            </WrapPanel>
+
             <WrapPanel>
                 <TextBlock Text="Kolor:" VerticalAlignment="Center" Margin="0,0,6,4" />
                 <ComboBox ItemsSource="{Binding ColorModes}" SelectedItem="{Binding ColorMode}"
@@ -134,6 +142,8 @@
                                         AutoFitCamera="{Binding AutoFitCamera}"
                                         FitVersion="{Binding FitVersion}"
                                         SensorView="{Binding IsSensorView}"
+                                        PointSize="{Binding PointSize}" ShowGrid="{Binding ShowGrid}"
+                                        ShowAxes="{Binding ShowAxes}"
                                         Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
                     <c:PointCloudView x:Name="View2D" IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}"
                                       Plane="{Binding Plane}" ColorSettings="{Binding ColorSettings}"

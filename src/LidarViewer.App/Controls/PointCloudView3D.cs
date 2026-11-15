@@ -85,6 +85,36 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(SensorViewProperty, value);
     }
 
+    public static readonly StyledProperty<double> PointSizeProperty =
+        AvaloniaProperty.Register<PointCloudView3D, double>(nameof(PointSize), 2.0);
+
+    /// <summary>Rozmiar punktu w pikselach urzadzenia logicznego.</summary>
+    public double PointSize
+    {
+        get => GetValue(PointSizeProperty);
+        set => SetValue(PointSizeProperty, value);
+    }
+
+    public static readonly StyledProperty<bool> ShowGridProperty =
+        AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(ShowGrid), true);
+
+    /// <summary>Kolowa siatka pomiarowa w plaszczyznie czujnika.</summary>
+    public bool ShowGrid
+    {
+        get => GetValue(ShowGridProperty);
+        set => SetValue(ShowGridProperty, value);
+    }
+
+    public static readonly StyledProperty<bool> ShowAxesProperty =
+        AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(ShowAxes), true);
+
+    /// <summary>Osie ukladu wspolrzednych (X czerwona, Y zielona, Z niebieska).</summary>
+    public bool ShowAxes
+    {
+        get => GetValue(ShowAxesProperty);
+        set => SetValue(ShowAxesProperty, value);
+    }
+
     private const string VertexShader = """
         in vec3 aPos;
         in vec4 aColor;
@@ -115,6 +145,8 @@ public sealed class PointCloudView3D : OpenGlControlBase
     private bool _colorsDirty = true;
     private bool _cameraFitted;
     private Vector3 _anchor;
+    private uint _guideVao, _guideVbo, _guideColVbo;
+    private int _axisVertexCount, _gridVertexCount;
 
     private PointCloud? _cloud;
     private bool _uploadPending;
@@ -141,6 +173,9 @@ public sealed class PointCloudView3D : OpenGlControlBase
 
         FitVersionProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view._cameraFitted = false);
         SensorViewProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
+        PointSizeProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
+        ShowGridProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
+        ShowAxesProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
 
         ColorSettingsProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.InvalidateColors());
     }
@@ -180,6 +215,19 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _colVbo);
         unsafe { _gl.VertexAttribPointer(1, 4, VertexAttribPointerType.UnsignedByte, true, 4, null); }
         _gl.EnableVertexAttribArray(1);
+
+        // Osie i siatka: osobny VAO, te same atrybuty (pozycja, kolor RGBA).
+        _guideVao = _gl.GenVertexArray();
+        _guideVbo = _gl.GenBuffer();
+        _guideColVbo = _gl.GenBuffer();
+        _gl.BindVertexArray(_guideVao);
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _guideVbo);
+        unsafe { _gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), null); }
+        _gl.EnableVertexAttribArray(0);
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _guideColVbo);
+        unsafe { _gl.VertexAttribPointer(1, 4, VertexAttribPointerType.UnsignedByte, true, 4, null); }
+        _gl.EnableVertexAttribArray(1);
+        _gl.BindVertexArray(_vao);
 
         if (!isEs) _gl.Enable(EnableCap.ProgramPointSize);
         _gl.Enable(EnableCap.DepthTest);
@@ -227,9 +275,16 @@ public sealed class PointCloudView3D : OpenGlControlBase
 
             gl.UseProgram(_program);
             gl.UniformMatrix4(_mvpLocation, 1, false, (float*)&mvp);
-            gl.Uniform1(_pointSizeLocation, (float)(2.0 * scale));
+            gl.Uniform1(_pointSizeLocation, (float)(Math.Max(PointSize, 1.0) * scale));
             gl.BindVertexArray(_vao);
             gl.DrawArrays(PrimitiveType.Points, 0, (uint)_pointCount);
+
+            gl.BindVertexArray(_guideVao);
+            if (ShowGrid && _gridVertexCount > 0)
+                gl.DrawArrays(PrimitiveType.Lines, _axisVertexCount, (uint)_gridVertexCount);
+            if (ShowAxes && _axisVertexCount > 0)
+                gl.DrawArrays(PrimitiveType.Lines, 0, (uint)_axisVertexCount);
+            gl.BindVertexArray(_vao);
         }
 
         if (!_firstRenderReported)
@@ -246,6 +301,9 @@ public sealed class PointCloudView3D : OpenGlControlBase
         if (_gl is null) return;
         _gl.DeleteBuffer(_vbo);
         _gl.DeleteBuffer(_colVbo);
+        _gl.DeleteBuffer(_guideVbo);
+        _gl.DeleteBuffer(_guideColVbo);
+        _gl.DeleteVertexArray(_guideVao);
         _gl.DeleteVertexArray(_vao);
         _gl.DeleteProgram(_program);
         _gl.Dispose();
@@ -284,6 +342,29 @@ public sealed class PointCloudView3D : OpenGlControlBase
     /// </summary>
     private Vector3 SensorPosition(PointCloud cloud) =>
         cloud.Center.Length() <= cloud.Radius ? -_anchor : Vector3.Zero;
+
+    /// <summary>
+    /// Osie i siatka dla biezacej chmury: jeden bufor, osie pierwsze, potem siatka.
+    /// </summary>
+    private unsafe void UploadGuides(GL gl, PointCloud cloud)
+    {
+        var guides = SceneGuides.Build(SensorPosition(cloud), cloud.Radius);
+        float[] positions = [.. guides.AxisPositions, .. guides.GridPositions];
+        byte[] colors = [.. guides.AxisColors, .. guides.GridColors];
+        _axisVertexCount = guides.AxisVertexCount;
+        _gridVertexCount = guides.GridVertexCount;
+
+        gl.BindBuffer(BufferTargetARB.ArrayBuffer, _guideVbo);
+        fixed (float* data = positions)
+            gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(positions.Length * sizeof(float)), data, BufferUsageARB.DynamicDraw);
+
+        gl.BindBuffer(BufferTargetARB.ArrayBuffer, _guideColVbo);
+        fixed (byte* data = colors)
+            gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)colors.Length, data, BufferUsageARB.DynamicDraw);
+
+        // Powrot do VBO chmury, zeby kolejne wywolania nie zmienily atrybutow VAO punktow.
+        gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
+    }
 
     private unsafe void UploadColors(GL gl)
     {
@@ -334,6 +415,8 @@ public sealed class PointCloudView3D : OpenGlControlBase
             _sensor.FitTo(SensorPosition(cloud), cloud.Radius);
             _cameraFitted = true;
         }
+
+        UploadGuides(gl, cloud);
 
         Report($"Wgrano {_pointCount:N0} punktów, promień chmury {cloud.Radius:F1}.");
     }
