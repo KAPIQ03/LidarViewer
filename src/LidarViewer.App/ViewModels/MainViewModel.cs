@@ -270,7 +270,7 @@ public partial class MainViewModel : ViewModelBase
 
         PointCloud = Pipeline.Output;
 
-        if (Pipeline.Output is not null)
+        if (Pipeline.Output is not null && !IsLive)
             Status = $"Po filtrach: {Pipeline.Output.Count:N0} punktów.";
     }
 
@@ -283,7 +283,7 @@ public partial class MainViewModel : ViewModelBase
         {
             string points = $"Punkty: {PointCloud?.Count ?? 0:N0}";
             if (IsLive)
-                return points + " | LIVE";
+                return points + " | LIVE" + LiveRates;
             return Sequence is not null ? points + $" | Sekwencja: {Sequence.Name}" : points;
         }
     }

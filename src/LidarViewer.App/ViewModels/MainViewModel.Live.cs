@@ -74,6 +74,11 @@ public partial class MainViewModel
         ? string.Empty
         : $"Punkty: {LivePointCount:N0} | Pakiety: {LivePacketCount:N0} | Odrzucone: {LiveRejectedCount:N0}";
 
+    /// <summary>Tempo odbioru do paska stanu: pakiety/s, odswiezenia/s i odrzucone.</summary>
+    private string LiveRates => _receiver is null
+        ? string.Empty
+        : $" | {_receiver.PacketsPerSecond:N0} pkt/s | {_receiver.UpdatesPerSecond:N0} kl./s | odrzucone: {LiveRejectedCount:N0}";
+
     public IRelayCommand StartLiveCommand { get; }
 
     public IRelayCommand StopLiveCommand { get; }
@@ -171,7 +176,10 @@ public partial class MainViewModel
     {
         ArgumentNullException.ThrowIfNull(cloud);
 
-        PointCloud = cloud;
+        // Filtry dzialaja tez na zywo: chmura przechodzi przez pipeline, a widok dostaje jego wynik.
+        Pipeline.Source = cloud;
+        PointCloud = Pipeline.Output;
+        OnPropertyChanged(nameof(StatusInfo));
         OnPropertyChanged(nameof(LivePointCount));
         OnPropertyChanged(nameof(LivePacketCount));
         OnPropertyChanged(nameof(LiveInfo));

@@ -20,6 +20,8 @@ public sealed class UdpCloudReceiver : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private long _packetCount;
     private long _rejectedCount;
+    private readonly RateMeter _packetRate = new();
+    private readonly RateMeter _frameRate = new();
     private readonly object _gate = new();
     private readonly Timer _flushTimer;
     private DateTime _nextUpdate = DateTime.MinValue;
@@ -54,6 +56,12 @@ public sealed class UdpCloudReceiver : IDisposable
     public long PacketCount => Interlocked.Read(ref _packetCount);
 
     public long RejectedCount => Interlocked.Read(ref _rejectedCount);
+
+    /// <summary>Odebrane datagramy na sekunde (z odrzuconymi).</summary>
+    public double PacketsPerSecond => _packetRate.PerSecond();
+
+    /// <summary>Publikowane aktualizacje chmury na sekunde.</summary>
+    public double UpdatesPerSecond => _frameRate.PerSecond();
 
     public bool IsRunning { get; private set; }
 
@@ -126,6 +134,7 @@ public sealed class UdpCloudReceiver : IDisposable
                 return;
             }
 
+            _packetRate.Add();
             PacketReceived?.Invoke(result.Buffer, DateTimeOffset.UtcNow);
 
             if (!_decoder.TryDecode(result.Buffer, out PointCloud? cloud) || cloud is null)
@@ -164,6 +173,7 @@ public sealed class UdpCloudReceiver : IDisposable
             snapshot = Buffer.Snapshot();
         }
 
+        _frameRate.Add();
         CloudUpdated?.Invoke(snapshot);
     }
 
@@ -181,6 +191,7 @@ public sealed class UdpCloudReceiver : IDisposable
             snapshot = Buffer.Snapshot();
         }
 
+        _frameRate.Add();
         CloudUpdated?.Invoke(snapshot);
     }
 

@@ -111,4 +111,30 @@ public class LiveModeTests
 
         vm.StopLiveCommand.Execute(null);
     }
+
+    [Fact]
+    public void LiveCloudPassesThroughFilters()
+    {
+        var vm = new MainViewModel();
+        vm.Pipeline.AddStage.Execute("sphere-crop");
+        var cloud = new PointCloud([1f, 2f, 3f, 4f, 5f, 6f]);
+
+        vm.ApplyLiveCloud(cloud);
+
+        Assert.Same(cloud, vm.Pipeline.Source);
+        Assert.Same(vm.Pipeline.Output, vm.PointCloud);
+        Assert.NotSame(cloud, vm.PointCloud);
+    }
+
+    [Fact]
+    public void StatusInfoShowsRatesWhileLive()
+    {
+        var vm = new MainViewModel { LivePort = 34573 };
+        vm.StartLiveCommand.Execute(null);
+
+        Assert.Contains("pkt/s", vm.StatusInfo);
+        Assert.Contains("kl./s", vm.StatusInfo);
+
+        vm.StopLiveCommand.Execute(null);
+    }
 }
