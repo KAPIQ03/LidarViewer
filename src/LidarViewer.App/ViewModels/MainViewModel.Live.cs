@@ -226,6 +226,16 @@ public partial class MainViewModel
         }
     }
 
+    partial void OnSensorModelChanged(VelodyneModel value) => RestartLiveIfVelodyne();
+
+    partial void OnCalibrationPathChanged(string value) => RestartLiveIfVelodyne();
+
+    private void RestartLiveIfVelodyne()
+    {
+        if (LiveProtocol == LiveProtocol.VelodyneVlp16)
+            OnLiveProtocolChanged(LiveProtocol);
+    }
+
     partial void OnLiveProtocolChanged(LiveProtocol value)
     {
         // Zmiana formatu pakietow wymaga nowego dekodera, wiec odbior

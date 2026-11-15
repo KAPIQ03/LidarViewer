@@ -153,16 +153,27 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CalibrationLabel))]
     public partial string CalibrationPath { get; set; } = "";
 
+    /// <summary>Model z wbudowana kalibracja - uzywany, gdy nie wskazano pliku db.xml.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalibrationLabel))]
+    public partial VelodyneModel SensorModel { get; set; } = VelodyneModel.Vlp16;
+
+    public VelodyneModel[] SensorModels { get; } = Enum.GetValues<VelodyneModel>();
+
     public string CalibrationLabel => string.IsNullOrWhiteSpace(CalibrationPath)
-        ? "Kalibracja: VLP-16 (wbudowana)"
+        ? $"Kalibracja: {BuiltInCalibration.Name} (wbudowana)"
         : "Kalibracja: " + System.IO.Path.GetFileName(CalibrationPath);
 
     public IRelayCommand ResetCalibrationCommand { get; }
 
     private VelodyneCalibration LoadCalibration() =>
         string.IsNullOrWhiteSpace(CalibrationPath)
-            ? VelodyneCalibration.Vlp16
+            ? BuiltInCalibration
             : VelodyneCalibrationReader.Read(CalibrationPath);
+
+    private VelodyneCalibration BuiltInCalibration => SensorModel == VelodyneModel.Hdl32E
+        ? VelodyneCalibration.Hdl32E
+        : VelodyneCalibration.Vlp16;
 
     /// <summary>Rozmiar punktu w widoku 3D (piksele).</summary>
     [ObservableProperty]

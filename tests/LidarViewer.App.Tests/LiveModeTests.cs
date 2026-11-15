@@ -138,3 +138,17 @@ public class LiveModeTests
         vm.StopLiveCommand.Execute(null);
     }
 }
+
+public class SensorModelTests
+{
+    [Fact]
+    public void CalibrationLabelFollowsSensorModel()
+    {
+        var vm = new MainViewModel();
+        Assert.Contains("VLP-16", vm.CalibrationLabel);
+
+        vm.SensorModel = VelodyneModel.Hdl32E;
+
+        Assert.Contains("HDL-32E", vm.CalibrationLabel);
+    }
+}
