@@ -49,6 +49,13 @@
                 <TextBlock Text="Punkt:" VerticalAlignment="Center" Margin="0,0,6,4" />
                 <Slider Width="110" Minimum="1" Maximum="10" Value="{Binding PointSize}" Margin="0,0,10,4"
                         VerticalAlignment="Center" ToolTip.Tip="Rozmiar punktu" />
+                <TextBlock Text="Patrz wzdłuż:" VerticalAlignment="Center" Margin="0,0,6,4" />
+                <Button Content="+X" Tag="+X" Click="OnViewDirectionClick" Margin="0,0,2,4" />
+                <Button Content="−X" Tag="-X" Click="OnViewDirectionClick" Margin="0,0,2,4" />
+                <Button Content="+Y" Tag="+Y" Click="OnViewDirectionClick" Margin="0,0,2,4" />
+                <Button Content="−Y" Tag="-Y" Click="OnViewDirectionClick" Margin="0,0,2,4" />
+                <Button Content="+Z" Tag="+Z" Click="OnViewDirectionClick" Margin="0,0,2,4" />
+                <Button Content="−Z" Tag="-Z" Click="OnViewDirectionClick" Margin="0,0,10,4" />
                 <CheckBox Content="Siatka" IsChecked="{Binding ShowGrid}" Margin="0,0,6,4" VerticalAlignment="Center" />
                 <CheckBox Content="Osie" IsChecked="{Binding ShowAxes}" Margin="0,0,6,4" VerticalAlignment="Center" />
             </WrapPanel>

@@ -151,4 +151,46 @@ public class OrbitCameraTests
         Assert.Equal(MathF.PI / 6, cam.Pitch, 4);
         Assert.Equal(50f, cam.Distance, 3);
     }
+
+    [Theory]
+    [InlineData(1, 0, 0)]
+    [InlineData(-1, 0, 0)]
+    [InlineData(0, 1, 0)]
+    [InlineData(0, -1, 0)]
+    public void LookAlong_HorizontalAxis_PutsCameraOppositeToDirection(float dx, float dy, float dz)
+    {
+        var cam = new OrbitCamera();
+        cam.FitTo(Vector3.Zero, 4f);
+        var direction = new Vector3(dx, dy, dz);
+
+        cam.LookAlong(direction);
+
+        Vector3 viewDirection = Vector3.Normalize(cam.Target - cam.Position);
+        AssertNear(direction, viewDirection);
+    }
+
+    [Fact]
+    public void LookAlong_DownAxis_LooksFromAbove()
+    {
+        var cam = new OrbitCamera();
+        cam.FitTo(Vector3.Zero, 4f);
+        cam.Yaw = 1f;
+
+        cam.LookAlong(-Vector3.UnitZ);
+
+        Assert.True(cam.Position.Z > 0);
+        Assert.Equal(OrbitCamera.MaxPitch, cam.Pitch, 4);
+        Assert.Equal(1f, cam.Yaw, 4); // kierunek obrotu zostaje
+    }
+
+    [Fact]
+    public void LookAlong_ZeroVector_DoesNothing()
+    {
+        var cam = new OrbitCamera { Yaw = 0.3f, Pitch = 0.2f };
+
+        cam.LookAlong(Vector3.Zero);
+
+        Assert.Equal(0.3f, cam.Yaw);
+        Assert.Equal(0.2f, cam.Pitch);
+    }
 }

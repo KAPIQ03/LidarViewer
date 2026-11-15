@@ -96,4 +96,15 @@ public class SensorCameraTests
         Assert.Equal(SensorCamera.DefaultFov, cam.FovY);
         Assert.Equal(new Vector3(4, 5, 6), cam.Position);
     }
+
+    [Fact]
+    public void LookAlong_SetsForwardDirection()
+    {
+        var cam = new SensorCamera();
+
+        cam.LookAlong(new Vector3(0, -1, 0));
+
+        Assert.Equal(-1f, cam.Forward.Y, 4);
+        Assert.Equal(0f, cam.Forward.Z, 4);
+    }
 }

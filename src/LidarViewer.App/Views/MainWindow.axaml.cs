@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -112,6 +113,25 @@ public partial class MainWindow : Window
 
         if (file?.TryGetLocalPath() is { } path)
             vm.ExportCloud(path);
+    }
+
+    private void OnViewDirectionClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string tag })
+            return;
+
+        Vector3 direction = tag switch
+        {
+            "+X" => Vector3.UnitX,
+            "-X" => -Vector3.UnitX,
+            "+Y" => Vector3.UnitY,
+            "-Y" => -Vector3.UnitY,
+            "+Z" => Vector3.UnitZ,
+            "-Z" => -Vector3.UnitZ,
+            _ => Vector3.Zero,
+        };
+
+        View3D.SetViewDirection(direction);
     }
 
     private async void OnScreenshotClick(object? sender, RoutedEventArgs e)

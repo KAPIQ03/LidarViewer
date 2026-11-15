@@ -331,6 +331,19 @@ public sealed class PointCloudView3D : OpenGlControlBase
         RequestNextFrameRendering();
     }
 
+    /// <summary>
+    /// Ustawia widok wzdluz osi: kamera patrzy w podanym kierunku (np. (0,0,-1) - z gory na dol).
+    /// </summary>
+    public void SetViewDirection(Vector3 direction)
+    {
+        if (SensorView)
+            _sensor.LookAlong(direction);
+        else
+            _camera.LookAlong(direction);
+
+        RequestNextFrameRendering();
+    }
+
     private unsafe void CaptureScreenshot(GL gl, int width, int height)
     {
         Action<int, int, byte[]>? callback = _screenshotCallback;

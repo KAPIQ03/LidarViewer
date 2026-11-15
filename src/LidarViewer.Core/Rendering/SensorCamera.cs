@@ -46,6 +46,20 @@ public sealed class SensorCamera
     }
 
     /// <summary>
+    /// Kieruje kamere wzdluz podanego kierunku (pitch ograniczony do MaxPitch).
+    /// </summary>
+    public void LookAlong(Vector3 direction)
+    {
+        if (direction.LengthSquared() < 1e-12f)
+            return;
+
+        Vector3 d = Vector3.Normalize(direction);
+        Pitch = Math.Clamp(MathF.Asin(Math.Clamp(d.Z, -1f, 1f)), -MaxPitch, MaxPitch);
+        if (MathF.Abs(d.X) > 1e-6f || MathF.Abs(d.Y) > 1e-6f)
+            Yaw = MathF.Atan2(d.Y, d.X);
+    }
+
+    /// <summary>
     /// Zblizenie przez zmiane kata widzenia: factor &lt; 1 przybliza, &gt; 1 oddala.
     /// </summary>
     public void Zoom(float factor) => FovY = Math.Clamp(FovY * factor, MinFov, MaxFov);
