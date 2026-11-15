@@ -5,8 +5,9 @@ namespace LidarViewer.Core.Streaming;
 /// <summary>
 /// Pakiet UDP wyciagniety z pliku pcap - czas przechwycenia w sekundach
 /// (od epoki Uniksa) i dane datagramu bez naglowkow Ethernet/IP/UDP.
+/// Offset to polozenie ladunku w pliku (do pozniejszego odczytu bez skanowania), -1 gdy nieznane.
 /// </summary>
-public readonly record struct PcapPacket(double Time, byte[] Payload);
+public readonly record struct PcapPacket(double Time, byte[] Payload, long Offset = -1);
 
 /// <summary>
 /// Czytnik plikow przechwytywania sieciowego: klasyczny pcap (mikro- i nanosekundy,
@@ -69,11 +70,12 @@ public static class PcapReader
             if (captured > MaxCapturedLength)
                 throw new InvalidDataException("Uszkodzony plik pcap: nieprawdopodobna długość pakietu.");
 
+            long dataOffset = stream.Position;
             byte[] data = new byte[captured];
             if (!TryReadExactly(stream, data))
                 yield break; // ucieta koncowka przechwytywania
 
-            if (TryExtractUdp(data, linkType, time, out PcapPacket packet))
+            if (TryExtractUdp(data, linkType, time, dataOffset, out PcapPacket packet))
                 yield return packet;
         }
     }
@@ -153,7 +155,8 @@ public static class PcapReader
 
                 var (linkType, resolution) = interfaces[(int)interfaceId];
                 byte[] data = body.AsSpan(20, (int)captured).ToArray();
-                if (TryExtractUdp(data, linkType, ticks * resolution, out PcapPacket packet))
+                long dataOffset = stream.Position - body.Length + 20;
+                if (TryExtractUdp(data, linkType, ticks * resolution, dataOffset, out PcapPacket packet))
                     yield return packet;
             }
         }
@@ -195,7 +198,7 @@ public static class PcapReader
         return TryReadExactly(stream, skip);
     }
 
-    private static bool TryExtractUdp(byte[] data, int linkType, double time, out PcapPacket packet)
+    private static bool TryExtractUdp(byte[] data, int linkType, double time, long dataOffset, out PcapPacket packet)
     {
         packet = default;
         int ip;
@@ -256,7 +259,7 @@ public static class PcapReader
         if (payloadLength <= 0)
             return false;
 
-        packet = new PcapPacket(time, data.AsSpan(udp + 8, payloadLength).ToArray());
+        packet = new PcapPacket(time, data.AsSpan(udp + 8, payloadLength).ToArray(), dataOffset + udp + 8);
         return true;
     }
 

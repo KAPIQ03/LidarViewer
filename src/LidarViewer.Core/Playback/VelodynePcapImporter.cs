@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using System.Text.Json;
 using LidarViewer.Core.Export;
 using LidarViewer.Core.Models;
@@ -8,8 +7,8 @@ using LidarViewer.Core.Streaming;
 namespace LidarViewer.Core.Playback;
 
 /// <summary>
-/// Zamienia przechwycenie sieciowe (pcap/pcapng) z czujnika Velodyne VLP-16
-/// na klatki chmur punktow - jedna klatka to jeden pelny obrot czujnika.
+/// Zamienia przechwycenie sieciowe (pcap/pcapng) z czujnika Velodyne na pliki PLY z manifestem
+/// (eksport do sekwencji). Do odtwarzania w aplikacji sluzy <see cref="PcapFrameSource"/> - bez kopii na dysku.
 ///
 /// Pakiety danych (1206 B) sa dekodowane przez <see cref="VelodyneDecoder"/>;
 /// pozostale datagramy (np. pakiety pozycji GPS) sa pomijane. Nowa klatka zaczyna sie,
@@ -26,41 +25,9 @@ public static class VelodynePcapImporter
     public static IEnumerable<(double Time, PointCloud Cloud)> ReadFrames(
         string pcapPath, VelodyneCalibration? calibration = null)
     {
-        var decoder = new VelodyneDecoder(calibration ?? VelodyneCalibration.Vlp16);
-        var frame = new FrameBuilder();
-
-        double origin = 0;
-        double frameStart = 0;
-        int lastAzimuth = -1;
-        bool first = true;
-
-        foreach (PcapPacket packet in PcapReader.ReadUdpPackets(pcapPath))
-        {
-            if (packet.Payload.Length != VelodyneVlp16Decoder.PacketSize)
-                continue;
-
-            if (!decoder.TryDecode(packet.Payload, out PointCloud? cloud) || cloud is null)
-                continue;
-
-            if (first)
-            {
-                origin = packet.Time;
-                first = false;
-            }
-
-            int azimuth = BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(2, 2));
-            if (lastAzimuth >= 0 && azimuth < lastAzimuth && frame.HasPoints)
-            {
-                yield return (frameStart, frame.Take());
-                frameStart = packet.Time - origin;
-            }
-
-            lastAzimuth = azimuth;
-            frame.Add(cloud, packet.Time - origin - frameStart);
-        }
-
-        if (frame.HasPoints)
-            yield return (frameStart, frame.Take());
+        var source = new PcapFrameSource(pcapPath, calibration);
+        for (int i = 0; i < source.FrameCount; i++)
+            yield return (source.Times[i], source.LoadFrame(i));
     }
 
     /// <summary>
@@ -97,49 +64,5 @@ public static class VelodynePcapImporter
         File.WriteAllText(Path.Combine(outputDirectory, SequenceLoader.ManifestFileName), json);
 
         return SequenceLoader.Load(outputDirectory);
-    }
-
-    /// <summary>
-    /// Sklada pakiety jednego obrotu w jedna chmure, razem z atrybutami punktow.
-    /// Czas punktu to przesuniecie pakietu wzgledem poczatku klatki plus czas wewnatrz pakietu.
-    /// </summary>
-    private sealed class FrameBuilder
-    {
-        private readonly List<float> _positions = [];
-        private readonly List<byte> _intensity = [];
-        private readonly List<byte> _laserId = [];
-        private readonly List<float> _azimuth = [];
-        private readonly List<float> _time = [];
-
-        public bool HasPoints => _positions.Count > 0;
-
-        public void Add(PointCloud packetCloud, double packetOffsetSeconds)
-        {
-            _positions.AddRange(packetCloud.Positions);
-            _intensity.AddRange(packetCloud.Intensity ?? new byte[packetCloud.Count]);
-            _laserId.AddRange(packetCloud.LaserId ?? new byte[packetCloud.Count]);
-            _azimuth.AddRange(packetCloud.Azimuth ?? new float[packetCloud.Count]);
-
-            float[] inPacket = packetCloud.Time ?? new float[packetCloud.Count];
-            foreach (float t in inPacket)
-                _time.Add((float)packetOffsetSeconds + t);
-        }
-
-        public PointCloud Take()
-        {
-            var cloud = new PointCloud(_positions.ToArray(), _intensity.ToArray())
-            {
-                LaserId = _laserId.ToArray(),
-                Azimuth = _azimuth.ToArray(),
-                Time = _time.ToArray(),
-            };
-
-            _positions.Clear();
-            _intensity.Clear();
-            _laserId.Clear();
-            _azimuth.Clear();
-            _time.Clear();
-            return cloud;
-        }
     }
 }

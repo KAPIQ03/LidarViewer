@@ -28,7 +28,7 @@ public partial class MainViewModel
     [NotifyPropertyChangedFor(nameof(AutoResetView))]
     [NotifyPropertyChangedFor(nameof(FrameInfo))]
     [NotifyPropertyChangedFor(nameof(Duration))]
-    public partial Sequence? Sequence { get; set; }
+    public partial IFrameSource? Sequence { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSequence))]
@@ -50,7 +50,7 @@ public partial class MainViewModel
 
     public string FrameInfo => Sequence is null
         ? string.Empty
-        : $"Klatka {Player?.FrameIndex + 1} / {Sequence.Frames.Count}";
+        : $"Klatka {Player?.FrameIndex + 1} / {Sequence.FrameCount}";
 
     /// <summary>
     /// Czy uzytkownik trzyma suwak osi czasu. Wtedy timer nie rusza pozycji,
@@ -81,11 +81,8 @@ public partial class MainViewModel
             || extension.Equals(".pcapng", StringComparison.OrdinalIgnoreCase);
     }
 
-    private string? _pcapDirectory;
-
     /// <summary>
-    /// Plik pcap z Velodyne VLP-16 jest zamieniany na sekwencje w katalogu
-    /// tymczasowym i otwierany jak kazda inna sekwencja.
+    /// Plik pcap z Velodyne jest indeksowany raz, a klatki dekodowane leniwie - bez plikow posrednich.
     /// </summary>
     private async Task LoadPcapAsync(string path)
     {
@@ -100,42 +97,19 @@ public partial class MainViewModel
             return;
         }
 
-        Status = $"Importowanie pcap (Velodyne {calibration.Name})...";
-        string directory = System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(), "LidarViewer", "pcap-" + Guid.NewGuid().ToString("N"));
-
+        Status = $"Indeksowanie pcap (Velodyne {calibration.Name})...";
+        PcapFrameSource source;
         try
         {
-            await Task.Run(() => VelodynePcapImporter.Import(path, directory, calibration: calibration));
+            source = await Task.Run(() => new PcapFrameSource(path, calibration));
         }
         catch (Exception ex)
         {
-            TryDeleteDirectory(directory);
             Status = $"Błąd: {ex.Message}";
             return;
         }
 
-        string? previous = _pcapDirectory;
-        _pcapDirectory = directory;
-        LoadSequenceCore(directory);
-
-        if (previous is not null)
-            TryDeleteDirectory(previous);
-    }
-
-    private static void TryDeleteDirectory(string directory)
-    {
-        try
-        {
-            if (System.IO.Directory.Exists(directory))
-                System.IO.Directory.Delete(directory, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
+        StartPlayback(source);
     }
 
     /// <summary>
@@ -198,8 +172,22 @@ public partial class MainViewModel
 
         try
         {
-            var sequence = SequenceLoader.Load(directory);
-            var player = new SequencePlayer(sequence) { Speed = Speed?.Multiplier ?? 1.0 };
+            StartPlayback(SequenceLoader.Load(directory));
+        }
+        catch (Exception ex)
+        {
+            Status = $"Błąd: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Zaczyna odtwarzanie podanego zrodla klatek od poczatku.
+    /// </summary>
+    private void StartPlayback(IFrameSource source)
+    {
+        try
+        {
+            var player = new SequencePlayer(source) { Speed = Speed?.Multiplier ?? 1.0 };
             player.FrameChanged += OnFrameChanged;
 
             if (Player is { } old)
@@ -209,12 +197,12 @@ public partial class MainViewModel
             }
 
             FitVersion++;
-            Sequence = sequence;
+            Sequence = source;
             Player = player;
             Pipeline.Reset();
             PositionSeconds = 0;
             ShowFrame(0);
-            Status = $"Wczytano sekwencję „{sequence.Name}” ({sequence.Frames.Count} klatek).";
+            Status = $"Wczytano sekwencję „{source.Name}” ({source.FrameCount} klatek).";
             OnPropertyChanged(nameof(IsPlaying));
         }
         catch (Exception ex)

@@ -7,7 +7,7 @@ namespace LidarViewer.Core.Playback;
 /// Sekwencja chmur punktow - lista klatek z czasami. Klatki wczytuje sie
 /// leniwie, ostatnia zostaje w pamieci, bo odtwarzanie czyta je po kolei.
 /// </summary>
-public sealed class Sequence
+public sealed class Sequence : IFrameSource
 {
     private const double DefaultFrameInterval = 0.1;
 
@@ -60,17 +60,13 @@ public sealed class Sequence
 
     public double Duration { get; }
 
+    public int FrameCount => Frames.Count;
+
     /// <summary>
     /// Numer klatki dla podanego czasu. Ostatnia klatka trwa do konca
     /// sekwencji.
     /// </summary>
-    public int FrameAt(double positionSeconds)
-    {
-        for (int i = 0; i < Frames.Count - 1; i++)
-            if (positionSeconds < Times[i + 1]) return i;
-
-        return Frames.Count - 1;
-    }
+    public int FrameAt(double positionSeconds) => FrameTimes.IndexAt(Times, positionSeconds);
 
     public PointCloud LoadFrame(int index)
     {

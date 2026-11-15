@@ -9,17 +9,17 @@ public sealed class SequencePlayer
     private const double MinSpeed = 0.25;
     private const double MaxSpeed = 4.0;
 
-    private readonly Sequence _sequence;
+    private readonly IFrameSource _sequence;
     private double _position;
     private double _speed = 1.0;
 
-    public SequencePlayer(Sequence sequence)
+    public SequencePlayer(IFrameSource sequence)
     {
         ArgumentNullException.ThrowIfNull(sequence);
         _sequence = sequence;
     }
 
-    public Sequence Sequence => _sequence;
+    public IFrameSource Sequence => _sequence;
 
     public int FrameIndex { get; private set; }
 
