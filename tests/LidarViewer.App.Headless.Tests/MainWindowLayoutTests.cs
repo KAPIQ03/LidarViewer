@@ -212,6 +212,36 @@ public class MainWindowLayoutTests
         window.Close();
     }
 
+    // Zrzut okna z wczytana chmura i sekwencja (pasek odtwarzania, tabela, legenda).
+    [AvaloniaFact]
+    public void SavesScreenshotOfWindowWithData()
+    {
+        string dir = WriteSequence(5);
+        try
+        {
+            var (window, vm) = ShowWindow();
+            var rnd = new Random(1);
+            var positions = new float[3 * 3000];
+            for (int i = 0; i < positions.Length; i++)
+                positions[i] = (float)(rnd.NextDouble() * 20 - 10);
+            vm.SetSourceForTests(new LidarViewer.Core.Models.PointCloud(positions));
+            vm.LoadSequenceCommand.Execute(dir);
+            vm.IsTableOpen = true;
+            vm.ColorMode = LidarViewer.Core.Rendering.ColorMode.Height;
+            Dispatcher.UIThread.RunJobs();
+
+            WriteableBitmap? frame = window.CaptureRenderedFrame();
+            Assert.NotNull(frame);
+            using (FileStream stream = File.Create(Path.Combine(AppContext.BaseDirectory, "main-window-data.png")))
+                frame!.Save(stream, new PngBitmapEncoderOptions());
+            window.Close();
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static Rect ToWindow(Control control, Window window)
     {
         Point origin = control.TranslatePoint(new Point(0, 0), window) ?? default;
@@ -294,5 +324,40 @@ public class MainWindowLayoutTests
         var headers = menu.Items.OfType<MenuItem>().Select(m => m.Header?.ToString()).ToList();
 
         Assert.Equal(["_Plik", "_Widok", "_Live", "_Narzędzia", "_Pomoc"], headers);
+    }
+
+    // Regresja: IsChecked pozycji menu jest domyslnie OneWay, wiec klikniecie nie zmienialo modelu.
+    [AvaloniaFact]
+    public void MenuCheckItemsWriteBackToViewModel()
+    {
+        var (window, vm) = ShowWindow();
+        var items = window.GetVisualDescendants().OfType<Menu>().Single()
+            .Items.OfType<MenuItem>().SelectMany(m => m.Items.OfType<MenuItem>()).ToList();
+
+        MenuItem grid = items.Single(m => m.Header?.ToString() == "Siatka");
+        bool before = vm.ShowGrid;
+        grid.IsChecked = !before;
+        Assert.Equal(!before, vm.ShowGrid);
+
+        MenuItem log = items.Single(m => m.Header?.ToString() == "Log diagnostyczny");
+        log.IsChecked = true;
+        Assert.True(vm.IsDiagnosticsOpen);
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void ViewCubeIsVisibleOnlyInOrbit3DMode()
+    {
+        var (window, vm) = ShowWindow();
+
+        vm.ViewMode = ViewMode.Widok3D;
+        Assert.True(vm.ShowViewCube);
+        vm.ViewMode = ViewMode.Kamera;
+        Assert.False(vm.ShowViewCube);
+        vm.ViewMode = ViewMode.Widok2D;
+        Assert.False(vm.ShowViewCube);
+
+        window.Close();
     }
 }

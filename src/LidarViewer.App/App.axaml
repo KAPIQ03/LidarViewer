@@ -2,14 +2,139 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="LidarViewer.App.App"
              xmlns:local="using:LidarViewer.App"
+             xmlns:mi="using:Material.Icons.Avalonia"
              RequestedThemeVariant="Dark">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
 
+    <Application.Resources>
+        <Color x:Key="AppBg">#16181C</Color>
+        <Color x:Key="PanelBg">#1E2127</Color>
+        <Color x:Key="PanelBg2">#252931</Color>
+        <Color x:Key="Hairline">#2F343D</Color>
+        <Color x:Key="AccentColor">#4C8DFF</Color>
+        <SolidColorBrush x:Key="AppBgBrush" Color="{StaticResource AppBg}" />
+        <SolidColorBrush x:Key="PanelBgBrush" Color="{StaticResource PanelBg}" />
+        <SolidColorBrush x:Key="PanelBg2Brush" Color="{StaticResource PanelBg2}" />
+        <SolidColorBrush x:Key="HairlineBrush" Color="{StaticResource Hairline}" />
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#8B93A1" />
+        <SolidColorBrush x:Key="WarnBrush" Color="#F5C66B" />
+    </Application.Resources>
+
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Dark" Accent="#4C8DFF" RegionColor="#16181C"
+                                       ErrorText="#FF6B6B" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
+        <mi:MaterialIconStyles />
+
+        <!-- Przyciski ikonowe paska narzedzi -->
+        <Style Selector="Button.tool, ToggleButton.tool">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#2C313A" />
+        </Style>
+        <Style Selector="ToggleButton.tool:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#2B4A80" />
+        </Style>
+        <Style Selector="ToggleButton.tool:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#34589A" />
+        </Style>
+        <Style Selector="Button.tool:disabled">
+            <Setter Property="Opacity" Value="0.35" />
+        </Style>
+
+        <!-- Przelacznik trybu widoku (segmenty) -->
+        <Style Selector="ToggleButton.seg">
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="#252931" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+        </Style>
+        <Style Selector="ToggleButton.seg:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#4C8DFF" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="ToggleButton.seg:pointerover:not(:checked) /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#2F343D" />
+        </Style>
+
+        <!-- Zwykle przyciski akcji -->
+        <Style Selector="Button.accent">
+            <Setter Property="Background" Value="#4C8DFF" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="12,6" />
+        </Style>
+        <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#6AA0FF" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.soft">
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="10,6" />
+        </Style>
+
+        <!-- Panele i sekcje -->
+        <Style Selector="Border.panel">
+            <Setter Property="Background" Value="{StaticResource PanelBgBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource HairlineBrush}" />
+        </Style>
+        <Style Selector="Border.overlay">
+            <Setter Property="Background" Value="#CC16181C" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="BorderBrush" Value="#33FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,6" />
+        </Style>
+        <Style Selector="Expander.section">
+            <Style.Resources>
+                <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent" />
+                <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#1AFFFFFF" />
+                <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#26FFFFFF" />
+                <SolidColorBrush x:Key="ExpanderContentBackground" Color="Transparent" />
+                <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="Transparent" />
+                <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent" />
+            </Style.Resources>
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="{StaticResource PanelBg2Brush}" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="IsExpanded" Value="True" />
+        </Style>
+        <Style Selector="TextBlock.caption">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Margin" Value="0,2,0,2" />
+        </Style>
+        <Style Selector="TextBlock.sectionTitle">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Separator.vertical">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="8,0" />
+            <Setter Property="Background" Value="{StaticResource HairlineBrush}" />
+        </Style>
     </Application.Styles>
 </Application>

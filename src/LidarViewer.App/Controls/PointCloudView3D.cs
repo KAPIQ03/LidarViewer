@@ -77,6 +77,32 @@ public sealed class PointCloudView3D : OpenGlControlBase
     /// <summary>
     /// Tryb "Kamera": widok z miejsca czujnika, obracany myszka (bez orbitowania).
     /// </summary>
+    public static readonly StyledProperty<float> ViewYawProperty =
+        AvaloniaProperty.Register<PointCloudView3D, float>(nameof(ViewYaw));
+
+    public static readonly StyledProperty<float> ViewPitchProperty =
+        AvaloniaProperty.Register<PointCloudView3D, float>(nameof(ViewPitch));
+
+    /// <summary>Aktualny yaw kamery orbitalnej (dla kostki orientacji).</summary>
+    public float ViewYaw
+    {
+        get => GetValue(ViewYawProperty);
+        private set => SetValue(ViewYawProperty, value);
+    }
+
+    /// <summary>Aktualny pitch kamery orbitalnej (dla kostki orientacji).</summary>
+    public float ViewPitch
+    {
+        get => GetValue(ViewPitchProperty);
+        private set => SetValue(ViewPitchProperty, value);
+    }
+
+    private void SyncView()
+    {
+        ViewYaw = _camera.Yaw;
+        ViewPitch = _camera.Pitch;
+    }
+
     public static readonly StyledProperty<bool> SensorViewProperty =
         AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(SensorView));
 
@@ -316,7 +342,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _viewportHeight = height;
 
         gl.Viewport(0, 0, (uint)width, (uint)height);
-        gl.ClearColor(0.1f, 0.1f, 0.1f, 1f);
+        gl.ClearColor(0.085f, 0.094f, 0.11f, 1f);
         gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         if (_pointCount > 0)
@@ -334,7 +360,12 @@ public sealed class PointCloudView3D : OpenGlControlBase
             if (ShowGrid && _gridVertexCount > 0)
                 gl.DrawArrays(PrimitiveType.Lines, _axisVertexCount, (uint)_gridVertexCount);
             if (ShowAxes && _axisVertexCount > 0)
+            {
+                // Osie lezą w plaszczyznie siatki - bez testu glebokosci rysujemy je nad nia i nad punktami.
+                gl.Disable(EnableCap.DepthTest);
                 gl.DrawArrays(PrimitiveType.Lines, 0, (uint)_axisVertexCount);
+                gl.Enable(EnableCap.DepthTest);
+            }
 
             if (_measureVertexCount > 0)
             {
@@ -400,6 +431,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
         else
             _camera.LookAlong(direction);
 
+        SyncView();
         RequestNextFrameRendering();
     }
 
@@ -435,6 +467,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
     {
         _camera.Reset();
         _sensor.Reset();
+        SyncView();
         _cameraFitted = false;
 
         if (_cloud is { Count: > 0 } cloud)
@@ -664,6 +697,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
         else if (_rotating)
         {
             _camera.Rotate(-(float)d.X * 0.01f, (float)d.Y * 0.01f);
+            SyncView();
         }
         else
         {

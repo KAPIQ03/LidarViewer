@@ -12,7 +12,7 @@ public sealed record ColorSettings
 
     public float Max { get; init; } = 1f;
 
-    public Rgba Solid { get; init; } = new(0x33, 0xE6, 0x4D, 0xFF);
+    public Rgba Solid { get; init; } = new(0xC4, 0xC4, 0xC4, 0xFF);
 
     public bool IsDegenerate => Max <= Min;
 }

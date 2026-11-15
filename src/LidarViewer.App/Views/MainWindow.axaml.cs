@@ -1,9 +1,10 @@
 using System;
-using System.Numerics;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -31,6 +32,17 @@ public partial class MainWindow : Window
         SeekSlider.AddHandler(PointerReleasedEvent, OnScrubEnd, RoutingStrategies.Bubble | RoutingStrategies.Tunnel, handledEventsToo: true);
         SeekSlider.AddHandler(PointerCaptureLostEvent, OnScrubEnd, RoutingStrategies.Bubble | RoutingStrategies.Tunnel, handledEventsToo: true);
 
+        // Kostka orientacji ustawia widok wzdluz kliknietej osi.
+        ViewCube.DirectionRequested += direction => View3D.SetViewDirection(direction);
+
+        // Klikniecie w scene zabiera fokus z kontrolek, zeby skroty klawiszowe znowu dzialaly.
+        View3D.Focusable = View2D.Focusable = true;
+        View3D.PointerPressed += (_, _) => View3D.Focus();
+        View2D.PointerPressed += (_, _) => View2D.Focus();
+
+        // Skroty lapiemy w tunelu: inaczej zjada je kontrolka, ktora akurat ma fokus.
+        AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
+
         _timer.Tick += OnTick;
         DataContextChanged += OnDataContextChanged;
         Closed += OnClosed;
@@ -38,17 +50,64 @@ public partial class MainWindow : Window
 
     private void OnExitClick(object? sender, RoutedEventArgs e) => Close();
 
-    private void OnViewModeMenuClick(object? sender, RoutedEventArgs e)
+    // Wspolny handler menu Widok i przyciskow trybu widoku (Tag = nazwa ViewMode).
+    private void OnViewModeClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is MainViewModel vm && sender is MenuItem { Tag: string tag }
+        if (DataContext is MainViewModel vm && sender is Control { Tag: string tag }
             && Enum.TryParse(tag, out ViewMode mode))
+        {
             vm.ViewMode = mode;
+
+            // Przycisk przelacza sam siebie - wymus stan zgodny z modelem.
+            if (sender is ToggleButton toggle)
+                toggle.IsChecked = true;
+        }
     }
 
     private void OnShortcutsClick(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is MainViewModel vm)
-            vm.Status = "Skróty: R reset widoku | 2 / 3 / 4 widok 2D / 3D / kamera | spacja odtwarzanie | ← → krok klatki | Home / End pierwsza / ostatnia klatka.";
+        (string Key, string Action)[] shortcuts =
+        [
+            ("R", "Resetuj i dopasuj widok"),
+            ("3", "Widok 3D"),
+            ("2", "Rzut 2D"),
+            ("4", "Kamera z perspektywy lidaru"),
+            ("Spacja", "Odtwarzanie / pauza"),
+            ("←  →", "Poprzednia / następna klatka"),
+            ("Home  End", "Pierwsza / ostatnia klatka"),
+            ("Mysz: lewy + ruch", "Obrót widoku"),
+            ("Mysz: prawy lub Shift + ruch", "Przesunięcie widoku"),
+            ("Kółko myszy", "Przybliżenie (w trybie Kamera: kąt widzenia)"),
+            ("Kostka w rogu", "Kliknij ścianę, aby spojrzeć wzdłuż osi X / Y / Z"),
+        ];
+
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(20) };
+        for (int i = 0; i < shortcuts.Length; i++)
+        {
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            var key = new Border
+            {
+                Background = Avalonia.Media.Brushes.Transparent,
+                Padding = new Thickness(0, 4, 24, 4),
+                Child = new TextBlock { Text = shortcuts[i].Key, FontWeight = Avalonia.Media.FontWeight.SemiBold },
+            };
+            var action = new TextBlock { Text = shortcuts[i].Action, Margin = new Thickness(0, 4), TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+            Grid.SetRow(key, i);
+            Grid.SetRow(action, i);
+            Grid.SetColumn(action, 1);
+            grid.Children.Add(key);
+            grid.Children.Add(action);
+        }
+
+        var dialog = new Window
+        {
+            Title = "Skróty klawiszowe",
+            Content = grid,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            CanResize = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+        dialog.ShowDialog(this);
     }
 
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
@@ -128,25 +187,6 @@ public partial class MainWindow : Window
 
         if (file?.TryGetLocalPath() is { } path)
             vm.ExportCloud(path);
-    }
-
-    private void OnViewDirectionClick(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { Tag: string tag })
-            return;
-
-        Vector3 direction = tag switch
-        {
-            "+X" => Vector3.UnitX,
-            "-X" => -Vector3.UnitX,
-            "+Y" => Vector3.UnitY,
-            "-Y" => -Vector3.UnitY,
-            "+Z" => Vector3.UnitZ,
-            "-Z" => -Vector3.UnitZ,
-            _ => Vector3.Zero,
-        };
-
-        View3D.SetViewDirection(direction);
     }
 
     private async void OnScreenshotClick(object? sender, RoutedEventArgs e)
@@ -330,14 +370,17 @@ public partial class MainWindow : Window
         View2D.ResetView();
     }
 
-    // Skroty klawiszowe: R - reset widoku, 2 - widok plaszczyzny, 3 - 3D, 4 - kamera z perspektywy lidaru,
-    // spacja - odtwarzanie, strzalki - krok klatki, Home/End - pierwsza/ostatnia klatka. W polach tekstowych skroty nie dzialaja, bo
-    // klawisze musza trafic do wpisywania.
-    protected override void OnKeyDown(KeyEventArgs e)
+    // Skroty klawiszowe: R - reset widoku, 2 / 3 / 4 - tryby widoku, spacja - odtwarzanie,
+    // strzalki - krok klatki, Home/End - pierwsza/ostatnia klatka. W polach tekstowych skroty
+    // nie dzialaja (klawisze trafiaja do wpisywania), a klawisze nawigacji nie przeszkadzaja
+    // listom i suwakom.
+    private void OnShortcutKeyDown(object? sender, KeyEventArgs e)
     {
-        base.OnKeyDown(e);
+        if (_vm is null || e.KeyModifiers != KeyModifiers.None || e.Source is TextBox)
+            return;
 
-        if (_vm is null || e.Source is TextBox or ComboBox or CheckBox or Slider or Button)
+        bool navigation = e.Key is Key.Left or Key.Right or Key.Home or Key.End or Key.Space;
+        if (navigation && e.Source is Slider or ComboBox or ComboBoxItem or ListBox or ListBoxItem or CheckBox or MenuItem)
             return;
 
         switch (e.Key)

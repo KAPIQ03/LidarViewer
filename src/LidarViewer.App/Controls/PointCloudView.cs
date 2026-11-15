@@ -54,7 +54,7 @@ public sealed class PointCloudView : Control
         set => SetValue(AutoResetViewProperty, value);
     }
 
-    private const int Background = unchecked((int)0xFF1A1A1A);
+    private const int Background = unchecked((int)0xFF16181C);
     private const int FallbackColor = unchecked((int)0xFF808080);
 
     private float _zoom = 1f;
