@@ -34,7 +34,6 @@
             <Menu Background="{StaticResource PanelBgBrush}">
                 <MenuItem Header="_Plik">
                     <MenuItem Header="Otwórz plik..." Click="OnBrowseClick" />
-                    <MenuItem Header="Otwórz sekwencję..." Click="OnBrowseSequenceClick" />
                     <Separator />
                     <MenuItem Header="Zapisz jako (PLY, PCD, LAS, CSV)..." Click="OnSaveAsClick" />
                     <MenuItem Header="Zrzut widoku PNG..." Click="OnScreenshotClick" />
@@ -84,9 +83,6 @@
                 <WrapPanel ItemHeight="38">
                     <Button Classes="tool" Click="OnBrowseClick" ToolTip.Tip="Otwórz plik chmury punktów lub nagranie pcap">
                         <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" />
-                    </Button>
-                    <Button Classes="tool" Click="OnBrowseSequenceClick" ToolTip.Tip="Otwórz sekwencję (katalog klatek)">
-                        <mi:MaterialIcon Kind="Filmstrip" Width="22" Height="22" />
                     </Button>
                     <Button Classes="tool" x:Name="SaveAsButton" Click="OnSaveAsClick" ToolTip.Tip="Zapisz chmurę (PLY, PCD, LAS, CSV)">
                         <mi:MaterialIcon Kind="ContentSaveOutline" Width="22" Height="22" />
@@ -256,12 +252,6 @@
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <mi:MaterialIcon Kind="FolderOpenOutline" Width="18" Height="18" />
                                     <TextBlock Text="Otwórz plik" />
-                                </StackPanel>
-                            </Button>
-                            <Button Classes="soft" Click="OnBrowseSequenceClick">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <mi:MaterialIcon Kind="Filmstrip" Width="18" Height="18" />
-                                    <TextBlock Text="Sekwencja" />
                                 </StackPanel>
                             </Button>
                             <Button Classes="soft" Command="{Binding StartLiveCommand}">

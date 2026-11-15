@@ -151,7 +151,7 @@ public class MainWindowLayoutTests
     [AvaloniaFact]
     public void RecordButtonAppearsOnlyInLiveMode()
     {
-        var vm = new MainViewModel { ViewMode = ViewMode.Widok2D, LivePort = 34811 };
+        var vm = new MainViewModel { ViewMode = ViewMode.Widok2D, LivePort = 34811, LiveProtocol = LiveProtocol.VelodyneVlp16 };
         var window = new MainWindow { DataContext = vm, Width = Width, Height = Height };
         window.Show();
         Dispatcher.UIThread.RunJobs();
@@ -200,8 +200,6 @@ public class MainWindowLayoutTests
     [AvaloniaFact]
     public void SavesScreenshotOfWindowWithData()
     {
-        string dir = WriteSequence(5);
-        try
         {
             var (window, vm) = ShowWindow();
             var rnd = new Random(1);
@@ -209,7 +207,7 @@ public class MainWindowLayoutTests
             for (int i = 0; i < positions.Length; i++)
                 positions[i] = (float)(rnd.NextDouble() * 20 - 10);
             vm.SetSourceForTests(new LidarViewer.Core.Models.PointCloud(positions));
-            vm.LoadSequenceCommand.Execute(dir);
+            vm.StartPlayback(new FakeFrameSource(5));
             vm.IsTableOpen = true;
             vm.ColorMode = LidarViewer.Core.Rendering.ColorMode.Height;
             Dispatcher.UIThread.RunJobs();
@@ -220,10 +218,6 @@ public class MainWindowLayoutTests
                 frame!.Save(stream, new PngBitmapEncoderOptions());
             window.Close();
         }
-        finally
-        {
-            Directory.Delete(dir, recursive: true);
-        }
     }
 
     private static Rect ToWindow(Control control, Window window)
@@ -232,33 +226,28 @@ public class MainWindowLayoutTests
         return new Rect(origin, control.Bounds.Size);
     }
 
-    private static string WriteSequence(int frames)
+    private sealed class FakeFrameSource(int count) : LidarViewer.Core.Playback.IFrameSource
     {
-        string dir = Path.Combine(Path.GetTempPath(), "lvhl-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        var entries = new List<string>();
-        for (int i = 0; i < frames; i++)
-        {
-            File.WriteAllLines(Path.Combine(dir, $"f{i}.ply"),
-            [
-                "ply", "format ascii 1.0", "element vertex 1",
-                "property float x", "property float y", "property float z", "end_header", "0 0 0",
-            ]);
-            entries.Add($"{{\"file\":\"f{i}.ply\",\"timestamp\":{i * 0.1}}}");
-        }
+        public string Name => "test";
 
-        File.WriteAllText(Path.Combine(dir, "sequence.json"), "{\"frames\":[" + string.Join(",", entries) + "]}");
-        return dir;
+        public int FrameCount => count;
+
+        public IReadOnlyList<double> Times { get; } = [.. Enumerable.Range(0, count).Select(i => i * 0.1)];
+
+        public double Duration => Times[^1];
+
+        public int FrameAt(double positionSeconds) =>
+            Math.Clamp((int)Math.Floor(positionSeconds / 0.1 + 1e-9), 0, count - 1);
+
+        public LidarViewer.Core.Models.PointCloud LoadFrame(int index) => new([0f, 0f, 0f]);
     }
 
     [AvaloniaFact]
     public void PlaybackBarShowsFrameNumbersAndFitsWindow()
     {
-        string dir = WriteSequence(4);
-        try
         {
             var (window, vm) = ShowWindow();
-            vm.LoadSequenceCommand.Execute(dir);
+            vm.StartPlayback(new FakeFrameSource(4));
             Dispatcher.UIThread.RunJobs();
 
             var boxes = window.GetVisualDescendants().OfType<NumericUpDown>().ToList();
@@ -274,10 +263,6 @@ public class MainWindowLayoutTests
 
             foreach (var box in boxes)
                 Assert.True(ToWindow(box, window).Right <= Width, "pole poza oknem");
-        }
-        finally
-        {
-            Directory.Delete(dir, recursive: true);
         }
     }
 

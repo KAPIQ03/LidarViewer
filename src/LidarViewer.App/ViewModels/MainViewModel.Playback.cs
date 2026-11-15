@@ -10,7 +10,6 @@ using LidarViewer.Core.Export;
 using LidarViewer.Core.Models;
 using LidarViewer.Core.Playback;
 using LidarViewer.Core.Readers;
-using LidarViewer.Core.Recording;
 using LidarViewer.Core.Rendering;
 using LidarViewer.Core.Streaming;
 
@@ -162,7 +161,6 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(RangeEnd));
     }
 
-    public IRelayCommand<string> LoadSequenceCommand { get; }
 
     private static bool IsPcapFile(string path)
     {
@@ -252,22 +250,7 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(IsPlaying));
     }
 
-    private void LoadSequenceCore(string? directory)
-    {
-        if (string.IsNullOrWhiteSpace(directory))
-            return;
-
-        try
-        {
-            StartPlayback(SequenceLoader.Load(directory));
-        }
-        catch (Exception ex)
-        {
-            Status = $"Błąd: {ex.Message}";
-        }
-    }
-
-    private void StartPlayback(IFrameSource source)
+    public void StartPlayback(IFrameSource source)
     {
         try
         {

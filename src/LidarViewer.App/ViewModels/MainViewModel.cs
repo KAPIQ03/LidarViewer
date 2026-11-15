@@ -11,7 +11,6 @@ using LidarViewer.Core.Export;
 using LidarViewer.Core.Models;
 using LidarViewer.Core.Playback;
 using LidarViewer.Core.Readers;
-using LidarViewer.Core.Recording;
 using LidarViewer.Core.Rendering;
 using LidarViewer.Core.Streaming;
 
@@ -189,7 +188,6 @@ public partial class MainViewModel : ViewModelBase
     {
         Pipeline.PropertyChanged += OnPipelinePropertyChanged;
         PlayPauseCommand = new RelayCommand(PlayPauseCore);
-        LoadSequenceCommand = new RelayCommand<string>(LoadSequenceCore);
         StartLiveCommand = new RelayCommand(StartLiveCore);
         StopLiveCommand = new RelayCommand(StopLiveCore);
         ResetCalibrationCommand = new RelayCommand(() => CalibrationPath = "");

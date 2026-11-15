@@ -1,28 +1,11 @@
+using LidarViewer.Core.Models;
 using LidarViewer.Core.Playback;
 
 namespace LidarViewer.Core.Tests.Playback;
 
 public class SequencePlayerTests
 {
-    private static Sequence ThreeFrames()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "lvplayer-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        foreach (string name in new[] { "a.ply", "b.ply", "c.ply" })
-        {
-            var lines = new List<string>
-            {
-                "ply", "format ascii 1.0", "element vertex 1",
-                "property float x", "property float y", "property float z", "end_header", "0 0 0",
-            };
-            File.WriteAllLines(Path.Combine(dir, name), lines);
-        }
-
-        File.WriteAllText(Path.Combine(dir, "sequence.json"),
-            """{"frames":[{"file":"a.ply","timestamp":0.0},{"file":"b.ply","timestamp":0.1},{"file":"c.ply","timestamp":0.2}]}""");
-
-        return SequenceLoader.Load(dir);
-    }
+    private static FakeFrameSource ThreeFrames() => new(3);
 
     [Fact]
     public void AdvanceDoesNothingWhenPaused()
@@ -231,5 +214,20 @@ public class SequencePlayerTests
         var player = new SequencePlayer(ThreeFrames()) { Speed = 0.1 };
 
         Assert.Equal(0.1, player.Speed);
+    }
+
+    private sealed class FakeFrameSource(int count) : IFrameSource
+    {
+        public string Name => "test";
+
+        public int FrameCount => count;
+
+        public IReadOnlyList<double> Times { get; } = [.. Enumerable.Range(0, count).Select(i => i * 0.1)];
+
+        public double Duration => Times[^1];
+
+        public int FrameAt(double positionSeconds) => FrameTimes.IndexAt(Times, positionSeconds);
+
+        public PointCloud LoadFrame(int index) => new([0f, 0f, 0f]);
     }
 }

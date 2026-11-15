@@ -198,20 +198,21 @@ public class VelodyneDecoderTests : TempDirTestBase
     }
 
     [Fact]
-    public void ImporterGivesFramesTimeAndLaserAttributes()
+    public void PcapFrameSourceGivesFramesTimeAndLaserAttributes()
     {
         string pcap = Write("t.pcap", PcapBytes(
         [
             (10.00, Vlp16Packet(0)), (10.05, Vlp16Packet(1800)), (10.10, Vlp16Packet(0)),
         ]));
 
-        var frames = VelodynePcapImporter.ReadFrames(pcap).ToList();
+        var source = new PcapFrameSource(pcap);
+        var first = source.LoadFrame(0);
 
-        Assert.Equal(2, frames.Count);
-        Assert.NotNull(frames[0].Cloud.LaserId);
-        Assert.Equal(2 * 12 * 32, frames[0].Cloud.Count);
-        Assert.True(frames[0].Cloud.Time!.Max() >= 0.05f);
-        Assert.Equal(0.10, frames[1].Time, 6);
+        Assert.Equal(2, source.FrameCount);
+        Assert.NotNull(first.LaserId);
+        Assert.Equal(2 * 12 * 32, first.Count);
+        Assert.True(first.Time!.Max() >= 0.05f);
+        Assert.Equal(0.10, source.Times[1], 6);
     }
 
     private static byte[] PcapBytes(IEnumerable<(double Time, byte[] Payload)> packets)

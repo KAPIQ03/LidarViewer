@@ -10,7 +10,6 @@ using LidarViewer.Core.Export;
 using LidarViewer.Core.Models;
 using LidarViewer.Core.Playback;
 using LidarViewer.Core.Readers;
-using LidarViewer.Core.Recording;
 using LidarViewer.Core.Rendering;
 using LidarViewer.Core.Streaming;
 
@@ -18,30 +17,23 @@ namespace LidarViewer.App.ViewModels;
 
 public partial class MainViewModel
 {
-    private SequenceRecorder? _recorder;
     private PcapWriter? _pcapWriter;
     private string? _pcapPath;
     private volatile string? _pcapError;
 
-    public double RecordingIntervalSeconds { get; set; } = 1.0;
-
     public bool IsRecording
     {
-        get => _recorder is not null || _pcapWriter is not null;
+        get => _pcapWriter is not null;
     }
 
     public bool RecordsRawPackets => IsLive && LiveProtocol == LiveProtocol.VelodyneVlp16;
 
     public long RecordedPacketCount => _pcapWriter?.PacketCount ?? 0;
 
-    public bool CanStartRecording => IsLive && !IsRecording;
-
-    public int RecordedFrameCount => _recorder?.FrameCount ?? 0;
+    public bool CanStartRecording => RecordsRawPackets && !IsRecording;
 
     public string RecordInfo =>
-        _pcapWriter is not null ? $"Nagrane pakiety: {RecordedPacketCount:N0}"
-        : _recorder is not null ? $"Nagrane klatki: {RecordedFrameCount:N0}"
-        : string.Empty;
+        _pcapWriter is not null ? $"Nagrane pakiety: {RecordedPacketCount:N0}" : string.Empty;
 
     public void ExportCloud(string path)
     {
@@ -58,26 +50,6 @@ public partial class MainViewModel
         }
         catch (Exception ex)
         {
-            Status = $"Błąd: {ex.Message}";
-        }
-    }
-
-    public void StartRecording(string directory)
-    {
-        if (_recorder is not null)
-            return;
-
-        try
-        {
-            _recorder = new SequenceRecorder(directory, null, RecordingIntervalSeconds);
-            OnPropertyChanged(nameof(IsRecording));
-            OnPropertyChanged(nameof(CanStartRecording));
-            OnPropertyChanged(nameof(RecordInfo));
-            Status = $"Nagrywanie do katalogu {directory}.";
-        }
-        catch (Exception ex)
-        {
-            _recorder = null;
             Status = $"Błąd: {ex.Message}";
         }
     }
@@ -141,28 +113,6 @@ public partial class MainViewModel
                 ? $"Zapisano nagranie pcap: {_pcapPath} ({packets:N0} pakietów)."
                 : $"Błąd zapisu pcap: {error}";
             return;
-        }
-
-        if (_recorder is null)
-            return;
-
-        SequenceRecorder recorder = _recorder;
-        _recorder = null;
-        OnPropertyChanged(nameof(IsRecording));
-        OnPropertyChanged(nameof(CanStartRecording));
-
-        try
-        {
-            string manifest = await recorder.FinishAsync();
-            Status = $"Zapisano nagranie: {manifest} ({recorder.FrameCount} klatek).";
-        }
-        catch (Exception ex)
-        {
-            Status = $"Błąd: {ex.Message}";
-        }
-        finally
-        {
-            OnPropertyChanged(nameof(RecordInfo));
         }
     }
 }
