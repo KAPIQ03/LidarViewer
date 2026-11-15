@@ -61,6 +61,14 @@ public partial class MainViewModel
     [ObservableProperty]
     public partial bool SimulatorEnabled { get; set; }
 
+    /// <summary>
+    /// Nagranie pcap odtwarzane przez symulator. Gdy ustawione i istnieje, symulator
+    /// wysyla pakiety Velodyne VLP-16 z tego pliku; w przeciwnym razie scene syntetyczna.
+    /// </summary>
+    public string? SimulatorPcapPath { get; set; }
+
+    private bool SimulatorUsesPcap => !string.IsNullOrWhiteSpace(SimulatorPcapPath) && File.Exists(SimulatorPcapPath);
+
     public int LivePointCount => _receiver?.Buffer.Count ?? 0;
 
     public long LivePacketCount => _receiver?.PacketCount ?? 0;
@@ -202,9 +210,20 @@ public partial class MainViewModel
     {
         if (value)
         {
-            // Symulator mowi wlasnym protokolem - inny dekoder odrzucilby
-            // wszystkie pakiety.
-            LiveProtocol = LiveProtocol.Wlasny;
+            // Dekoder musi pasowac do tego, co wysyla symulator, inaczej odrzuci
+            // wszystkie pakiety: nagranie pcap to Velodyne VLP-16, scena syntetyczna to protokol wlasny.
+            bool usePcap = SimulatorUsesPcap;
+            if (usePcap)
+            {
+                SensorModel = VelodyneModel.Vlp16;
+                CalibrationPath = "";
+            }
+
+            LiveProtocol newProtocol = usePcap ? LiveProtocol.VelodyneVlp16 : LiveProtocol.Wlasny;
+            if (LiveProtocol != newProtocol && _receiver is not null)
+                StopLiveCore();
+
+            LiveProtocol = newProtocol;
 
             if (_receiver is null)
                 StartLiveCore();
@@ -216,9 +235,11 @@ public partial class MainViewModel
             }
 
             _simulator?.Dispose();
-            _simulator = new LiveSimulator("127.0.0.1", _receiver.Port);
+            _simulator = new LiveSimulator("127.0.0.1", _receiver.Port, usePcap ? SimulatorPcapPath : null);
             _simulator.Start();
-            Status = "Symulator włączony - pakiety lecą na 127.0.0.1.";
+            Status = usePcap
+                ? $"Symulator włączony - odtwarzanie {Path.GetFileName(SimulatorPcapPath)} na 127.0.0.1."
+                : "Symulator włączony - pakiety lecą na 127.0.0.1.";
         }
         else
         {

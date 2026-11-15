@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,8 +11,9 @@ using LidarViewer.Core.Streaming;
 namespace LidarViewer.App.Streaming;
 
 /// <summary>
-/// Symulator czujnika lidar - generuje chmure punktow i wysyla je po UDP
-/// wlasnym protokolem. Pozwala sprawdzic tryb live bez sprzetu.
+/// Symulator czujnika lidar. Bez pliku generuje chmure punktow i wysyla ja po UDP
+/// wlasnym protokolem. Z plikiem pcap odtwarza w petli pakiety Velodyne z oryginalnym
+/// tempem (jak tools/velodyne_sender.py). Pozwala sprawdzic tryb live bez sprzetu.
 ///
 /// Generowany obiekt to wirujacy wiatrak 360 kolumn x 16 poziomow, ktory
 /// zmienia ksztalt w czasie - tak jak chmura z prawdziwego czujnika.
@@ -32,9 +35,15 @@ public sealed class LiveSimulator : IDisposable
     private readonly IPEndPoint _target;
     private CancellationTokenSource? _cts;
     private Task? _loop;
+    private readonly string? _pcapPath;
 
-    public LiveSimulator(string host, int port)
+    /// <summary>Rozmiar ladunku pakietu danych Velodyne VLP-16.</summary>
+    private const int VelodynePayloadLength = 1206;
+
+    /// <param name="pcapPath">Nagranie pcap do odtwarzania; null = scena syntetyczna (protokol wlasny).</param>
+    public LiveSimulator(string host, int port, string? pcapPath = null)
     {
+        _pcapPath = pcapPath;
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(port);
 
@@ -53,7 +62,7 @@ public sealed class LiveSimulator : IDisposable
 
         _cts = new CancellationTokenSource();
         CancellationToken token = _cts.Token;
-        _loop = Task.Run(() => RunAsync(token));
+        _loop = Task.Run(() => _pcapPath is null ? RunAsync(token) : RunPcapAsync(_pcapPath, token));
     }
 
     public void Stop()
@@ -92,6 +101,55 @@ public sealed class LiveSimulator : IDisposable
             {
                 return;
             }
+        }
+    }
+
+    /// <summary>
+    /// Wysyla w petli pakiety danych z pcap w tempie wynikajacym ze znacznikow czasu.
+    /// Plik jest czytany strumieniowo, wiec nie trzeba go miescic w pamieci.
+    /// </summary>
+    private async Task RunPcapAsync(string path, CancellationToken token)
+    {
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                var clock = Stopwatch.StartNew();
+                double? firstTime = null;
+                bool sentAny = false;
+
+                foreach (PcapPacket packet in PcapReader.ReadUdpPackets(path))
+                {
+                    if (token.IsCancellationRequested)
+                        return;
+
+                    // Pakiety pozycji GPS (inny rozmiar) pomijamy - dekoder ich nie uzywa.
+                    if (packet.Payload.Length != VelodynePayloadLength)
+                        continue;
+
+                    firstTime ??= packet.Time;
+                    TimeSpan due = TimeSpan.FromSeconds(Math.Max(0, packet.Time - firstTime.Value));
+                    TimeSpan wait = due - clock.Elapsed;
+                    if (wait > TimeSpan.FromMilliseconds(2))
+                        await Task.Delay(wait, token).ConfigureAwait(false);
+
+                    await _client.SendAsync(packet.Payload, _target).ConfigureAwait(false);
+                    sentAny = true;
+                }
+
+                // Plik bez pakietow danych - nie kreć sie w pustej petli.
+                if (!sentAny)
+                    return;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (SocketException)
+        {
+        }
+        catch (IOException)
+        {
         }
     }
 

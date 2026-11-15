@@ -48,6 +48,41 @@ public class LiveSimulatorTests
     }
 
     [Fact]
+    public async Task SimulatorReplaysPcapInLoop()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"sim-{Guid.NewGuid():N}.pcap");
+        try
+        {
+            using (var writer = new PcapWriter(path))
+            {
+                var start = DateTimeOffset.FromUnixTimeSeconds(1_700_000_000);
+                for (int i = 0; i < 5; i++)
+                {
+                    // Pakiet danych (1206 B) oraz pakiet innego rozmiaru, ktory ma zostac pominiety.
+                    writer.Write(new byte[1206], start.AddMilliseconds(i * 10));
+                    writer.Write(new byte[512], start.AddMilliseconds(i * 10 + 5));
+                }
+            }
+
+            using var receiver = new UdpCloudReceiver(0, new SimpleCloudDecoder(), 20000);
+            receiver.Start();
+
+            using var simulator = new LiveSimulator("127.0.0.1", receiver.Port, path);
+            simulator.Start();
+
+            // Plik ma 5 pakietow danych; wiecej niz 5 odebranych oznacza petle,
+            // a pakiety 512 B nie moga dotrzec do odbiornika.
+            await Task.Delay(500);
+            long received = receiver.PacketCount + receiver.RejectedCount;
+            Assert.True(received > 5, "Symulator nie zapetlil nagrania.");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void SimulatorRejectsInvalidPort()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new LiveSimulator("127.0.0.1", 0));
