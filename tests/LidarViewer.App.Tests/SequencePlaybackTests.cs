@@ -153,4 +153,39 @@ public class SequencePlaybackTests : IDisposable
 
         Assert.True(vm.Player?.Loop);
     }
+
+    [Fact]
+    public void LoadingSingleFileClosesPreviousSequence()
+    {
+        WriteSequence();
+        var vm = new MainViewModel();
+        vm.LoadSequenceCommand.Execute(_dir);
+        vm.PlayPauseCommand.Execute(null);
+
+        vm.SetSourceForTests(new LidarViewer.Core.Models.PointCloud([0, 0, 0]));
+        // Wczytanie pliku przez komende zamyka sekwencje, wiec robimy to jawnie przez plik.
+        string single = Path.Combine(_dir, "f0.ply");
+        vm.FilePath = single;
+        vm.LoadCommand.ExecuteAsync(null).GetAwaiter().GetResult();
+
+        Assert.False(vm.HasSequence);
+        Assert.False(vm.IsPlaying);
+        Assert.Equal(2, vm.PointCloud?.Count);
+    }
+
+    [Fact]
+    public void CameraStaysPutBetweenSequenceFramesButRefitsForNewSequence()
+    {
+        WriteSequence();
+        var vm = new MainViewModel();
+        int before = vm.FitVersion;
+
+        vm.LoadSequenceCommand.Execute(_dir);
+        int afterLoad = vm.FitVersion;
+        vm.Seek(0.2);
+
+        Assert.False(vm.AutoFitCamera);
+        Assert.True(afterLoad > before);
+        Assert.Equal(afterLoad, vm.FitVersion);
+    }
 }

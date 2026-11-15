@@ -41,6 +41,8 @@ public partial class MainViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSequence))]
+    [NotifyPropertyChangedFor(nameof(AutoFitCamera))]
+    [NotifyPropertyChangedFor(nameof(AutoResetView))]
     [NotifyPropertyChangedFor(nameof(FrameInfo))]
     [NotifyPropertyChangedFor(nameof(Duration))]
     public partial Sequence? Sequence { get; set; }
@@ -232,13 +234,20 @@ public partial class MainViewModel : ViewModelBase
     /// Czy widok ma sam dopasowac kamere do chmury. W trybie live kamera
     /// zostaje na miejscu, zeby uzytkownik mogl obracac chmure recznie.
     /// </summary>
-    public bool AutoFitCamera => !IsLive;
+    public bool AutoFitCamera => !IsLive && !HasSequence;
+
+    /// <summary>
+    /// Zwieksza sie przy kazdym nowym zbiorze danych (plik, sekwencja). Widok 3D
+    /// dopasowuje wtedy kamere raz, a kolejne klatki sekwencji jej nie ruszaja.
+    /// </summary>
+    [ObservableProperty]
+    public partial int FitVersion { get; set; }
 
     /// <summary>
     /// Czy widok 2D ma sam resetowac zoom i przesuniecie. W trybie live
     /// widok zostaje na miejscu.
     /// </summary>
-    public bool AutoResetView => !IsLive;
+    public bool AutoResetView => !IsLive && !HasSequence;
 
     /// <summary>
     /// Czy panel filtrow jest widoczny. Panel mozna zamknac, zeby nie
@@ -418,10 +427,17 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
+        if (IsPcapFile(path))
+        {
+            await LoadPcapAsync(path);
+            return;
+        }
+
         Status = "Wczytywanie...";
         try
         {
             var cloud = await Task.Run(() => PointCloudLoader.Read(path));
+            CloseSequence();
             ApplySource(cloud);
             Status = $"Wczytano {cloud.Count:N0} punktów ({System.IO.Path.GetFileName(path)}).";
         }
@@ -431,8 +447,80 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    private static bool IsPcapFile(string path)
+    {
+        string extension = System.IO.Path.GetExtension(path);
+        return extension.Equals(".pcap", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".pcapng", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string? _pcapDirectory;
+
+    /// <summary>
+    /// Plik pcap z Velodyne VLP-16 jest zamieniany na sekwencje w katalogu
+    /// tymczasowym i otwierany jak kazda inna sekwencja.
+    /// </summary>
+    private async Task LoadPcapAsync(string path)
+    {
+        Status = "Importowanie pcap (Velodyne VLP-16)...";
+        string directory = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), "LidarViewer", "pcap-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            await Task.Run(() => VelodynePcapImporter.Import(path, directory));
+        }
+        catch (Exception ex)
+        {
+            TryDeleteDirectory(directory);
+            Status = $"Błąd: {ex.Message}";
+            return;
+        }
+
+        string? previous = _pcapDirectory;
+        _pcapDirectory = directory;
+        LoadSequenceCore(directory);
+
+        if (previous is not null)
+            TryDeleteDirectory(previous);
+    }
+
+    private static void TryDeleteDirectory(string directory)
+    {
+        try
+        {
+            if (System.IO.Directory.Exists(directory))
+                System.IO.Directory.Delete(directory, recursive: true);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Zamyka biezaca sekwencje, zeby Play nie odtwarzal wczesniejszego pliku
+    /// po wczytaniu innego zrodla.
+    /// </summary>
+    private void CloseSequence()
+    {
+        if (Player is { } player)
+        {
+            player.Pause();
+            player.FrameChanged -= OnFrameChanged;
+        }
+
+        Player = null;
+        Sequence = null;
+        PositionSeconds = 0;
+        OnPropertyChanged(nameof(IsPlaying));
+    }
+
     private void ApplySource(PointCloud cloud)
     {
+        FitVersion++;
         SourceCloud = cloud;
         Pipeline.Reset();
         Pipeline.Source = cloud;
@@ -476,6 +564,13 @@ public partial class MainViewModel : ViewModelBase
             var player = new SequencePlayer(sequence) { Speed = Speed?.Multiplier ?? 1.0 };
             player.FrameChanged += OnFrameChanged;
 
+            if (Player is { } old)
+            {
+                old.Pause();
+                old.FrameChanged -= OnFrameChanged;
+            }
+
+            FitVersion++;
             Sequence = sequence;
             Player = player;
             Pipeline.Reset();
@@ -659,6 +754,8 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_receiver is not null)
             return;
+
+        CloseSequence();
 
         try
         {

@@ -112,6 +112,7 @@
                     <c:PointCloudView3D x:Name="View3D" IsVisible="{Binding Is3D}" PointCloud="{Binding PointCloud}"
                                         ColorSettings="{Binding ColorSettings}"
                                         AutoFitCamera="{Binding AutoFitCamera}"
+                                        FitVersion="{Binding FitVersion}"
                                         Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
                     <c:PointCloudView x:Name="View2D" IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}"
                                       Plane="{Binding Plane}" ColorSettings="{Binding ColorSettings}"

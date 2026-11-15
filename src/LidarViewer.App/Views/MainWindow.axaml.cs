@@ -37,8 +37,11 @@ public partial class MainWindow : Window
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("Chmury punktów")
-                    { Patterns = PointCloudLoader.SupportedExtensions.Select(e => "*" + e).ToArray() },
+                // Pierwszy filtr jest domyslny - musi obejmowac tez pcap, inaczej natywne
+                // okno (macOS) szarzy takie pliki, dopoki uzytkownik nie przelaczy filtra.
+                new FilePickerFileType("Chmury punktów i nagrania pcap")
+                    { Patterns = PointCloudLoader.SupportedExtensions.Concat([".pcap", ".pcapng"]).Select(e => "*" + e).ToArray() },
+                new FilePickerFileType("Nagranie Velodyne VLP-16 (pcap)") { Patterns = ["*.pcap", "*.pcapng"] },
                 FilePickerFileTypes.All,
             ],
         });

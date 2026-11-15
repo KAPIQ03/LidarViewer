@@ -60,6 +60,19 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(AutoFitCameraProperty, value);
     }
 
+    /// <summary>
+    /// Numer zbioru danych. Zmiana wymusza ponowne dopasowanie kamery przy
+    /// nastepnej chmurze, takze gdy AutoFitCamera jest wylaczone.
+    /// </summary>
+    public static readonly StyledProperty<int> FitVersionProperty =
+        AvaloniaProperty.Register<PointCloudView3D, int>(nameof(FitVersion));
+
+    public int FitVersion
+    {
+        get => GetValue(FitVersionProperty);
+        set => SetValue(FitVersionProperty, value);
+    }
+
     private const string VertexShader = """
         in vec3 aPos;
         in vec4 aColor;
@@ -89,6 +102,7 @@ public sealed class PointCloudView3D : OpenGlControlBase
     private int _mvpLocation, _pointSizeLocation;
     private bool _colorsDirty = true;
     private bool _cameraFitted;
+    private Vector3 _anchor;
 
     private PointCloud? _cloud;
     private bool _uploadPending;
@@ -111,6 +125,8 @@ public sealed class PointCloudView3D : OpenGlControlBase
             view.InvalidateColors();
             view.RequestNextFrameRendering();
         });
+
+        FitVersionProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view._cameraFitted = false);
 
         ColorSettingsProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.InvalidateColors());
     }
@@ -236,7 +252,11 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _cameraFitted = false;
 
         if (_cloud is { Count: > 0 } cloud)
+        {
+            _anchor = cloud.Center;
+            _uploadPending = true;
             _camera.FitTo(Vector3.Zero, cloud.Radius);
+        }
 
         RequestNextFrameRendering();
     }
@@ -263,7 +283,12 @@ public sealed class PointCloudView3D : OpenGlControlBase
         _pointCount = cloud?.Count ?? 0;
         if (cloud is null || _pointCount == 0) return;
 
-        Vector3 center = cloud.Center;
+        // Srodek odniesienia zmienia sie tylko przy dopasowaniu kamery. Dzieki temu kolejne
+        // klatki sekwencji lub live nie przesuwaja sceny, gdy ich zakres nieco sie rozni.
+        bool fit = AutoFitCamera || !_cameraFitted;
+        if (fit)
+            _anchor = cloud.Center;
+        Vector3 center = _anchor;
         var relative = new float[cloud.Positions.Length];
         for (int i = 0; i < relative.Length; i += 3)
         {
@@ -277,9 +302,9 @@ public sealed class PointCloudView3D : OpenGlControlBase
             gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(relative.Length * sizeof(float)), data, BufferUsageARB.StaticDraw);
         ReportGlError(gl, "po BufferData");
 
-        // W trybie live kamera dopasowuje sie tylko do pierwszej chmury.
+        // Kamera dopasowuje sie tylko do pierwszej chmury zbioru (live, sekwencja).
         // Kolejne klatki nie cofaja obrotu ustawionego przez uzytkownika.
-        if (AutoFitCamera || !_cameraFitted)
+        if (fit)
         {
             _camera.FitTo(Vector3.Zero, cloud.Radius);
             _cameraFitted = true;
