@@ -1,22 +1,506 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:LidarViewer.App.ViewModels"
+        xmlns:c="using:LidarViewer.App.Controls"
+        xmlns:conv="using:LidarViewer.App.Converters"
+        xmlns:mi="using:Material.Icons.Avalonia"
+        xmlns:rend="using:LidarViewer.Core.Rendering"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="600"
         x:Class="LidarViewer.App.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="LidarViewer.App">
+        Width="1400" Height="880" MinWidth="760" MinHeight="520"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBgBrush}"
+        Title="LidarViewer">
+
+    <Window.Resources>
+        <conv:FloatTextConverter x:Key="FloatText" />
+        <conv:NumberTextConverter x:Key="NumberText" />
+        <conv:FilterKindToBoolConverter x:Key="KindToBool" />
+        <conv:LiveProtocolToTextConverter x:Key="ProtocolToText" />
+        <conv:EnumEqualsConverter x:Key="EnumEquals" />
+        <conv:EnumLabelConverter x:Key="EnumLabel" />
+    </Window.Resources>
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <TextBox Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- ===== Menu + pasek narzedzi ===== -->
+        <StackPanel Grid.Row="0" x:Name="Toolbar">
+            <Menu Background="{StaticResource PanelBgBrush}">
+                <MenuItem Header="_Plik">
+                    <MenuItem Header="Otwórz plik..." Click="OnBrowseClick" />
+                    <MenuItem Header="Otwórz sekwencję..." Click="OnBrowseSequenceClick" />
+                    <Separator />
+                    <MenuItem Header="Zapisz jako (PLY, PCD, LAS, CSV)..." Click="OnSaveAsClick" />
+                    <MenuItem Header="Zrzut widoku PNG..." Click="OnScreenshotClick" />
+                    <Separator />
+                    <MenuItem Header="Kalibracja Velodyne..." Click="OnBrowseCalibrationClick" />
+                    <Separator />
+                    <MenuItem Header="Zamknij" Click="OnExitClick" />
+                </MenuItem>
+                <MenuItem Header="_Widok">
+                    <MenuItem Header="Widok 3D (3)" Tag="Widok3D" Click="OnViewModeClick" />
+                    <MenuItem Header="Widok 2D (2)" Tag="Widok2D" Click="OnViewModeClick" />
+                    <MenuItem Header="Resetuj widok (R)" Click="OnResetViewClick" />
+                    <Separator />
+                    <MenuItem Header="Siatka" ToggleType="CheckBox" IsChecked="{Binding ShowGrid, Mode=TwoWay}" />
+                    <MenuItem Header="Osie" ToggleType="CheckBox" IsChecked="{Binding ShowAxes, Mode=TwoWay}" />
+                    <Separator />
+                    <MenuItem Header="Panel boczny" ToggleType="CheckBox" IsChecked="{Binding IsFiltersPanelOpen, Mode=TwoWay}" />
+                    <MenuItem Header="Tabela punktów" ToggleType="CheckBox" IsChecked="{Binding IsTableOpen, Mode=TwoWay}" />
+                </MenuItem>
+                <MenuItem Header="_Live">
+                    <MenuItem Header="Start odbioru UDP" Command="{Binding StartLiveCommand}" />
+                    <MenuItem Header="Stop odbioru UDP" Command="{Binding StopLiveCommand}" />
+                    <Separator />
+                    <MenuItem Header="Nagrywaj..." Click="OnRecordClick" />
+                    <MenuItem Header="Zatrzymaj nagrywanie" Click="OnStopRecordingClick" />
+                </MenuItem>
+                <MenuItem Header="_Narzędzia">
+                    <MenuItem Header="Pomiar odległości" ToggleType="CheckBox" IsChecked="{Binding IsMeasuring, Mode=TwoWay}" />
+                </MenuItem>
+                <MenuItem Header="_Pomoc">
+                    <MenuItem Header="Skróty klawiszowe" Click="OnShortcutsClick" />
+                    <MenuItem Header="Log diagnostyczny" ToggleType="CheckBox" IsChecked="{Binding IsDiagnosticsOpen, Mode=TwoWay}" />
+                </MenuItem>
+            </Menu>
+
+            <Border Classes="panel" BorderThickness="0,1,0,1" Padding="8,6">
+                <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Height="38" VerticalAlignment="Top">
+                    <ToggleButton Classes="tool" IsChecked="{Binding IsTableOpen, Mode=TwoWay}" ToolTip.Tip="Tabela punktów">
+                        <mi:MaterialIcon Kind="TableLarge" Width="22" Height="22" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" IsChecked="{Binding IsFiltersPanelOpen, Mode=TwoWay}"
+                                  ToolTip.Tip="Panel boczny: wygląd, źródło danych, filtry">
+                        <mi:MaterialIcon Kind="DockRight" Width="22" Height="22" />
+                    </ToggleButton>
+                </StackPanel>
+                <WrapPanel ItemHeight="38">
+                    <Button Classes="tool" Click="OnBrowseClick" ToolTip.Tip="Otwórz plik chmury punktów lub nagranie pcap">
+                        <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" />
+                    </Button>
+                    <Button Classes="tool" Click="OnBrowseSequenceClick" ToolTip.Tip="Otwórz sekwencję (katalog klatek)">
+                        <mi:MaterialIcon Kind="Filmstrip" Width="22" Height="22" />
+                    </Button>
+                    <Button Classes="tool" x:Name="SaveAsButton" Click="OnSaveAsClick" ToolTip.Tip="Zapisz chmurę (PLY, PCD, LAS, CSV)">
+                        <mi:MaterialIcon Kind="ContentSaveOutline" Width="22" Height="22" />
+                    </Button>
+                    <Button Classes="tool" Click="OnScreenshotClick" ToolTip.Tip="Zrzut widoku do PNG">
+                        <mi:MaterialIcon Kind="CameraOutline" Width="22" Height="22" />
+                    </Button>
+
+                    <Separator Classes="vertical" />
+
+                    <Button Classes="tool" Command="{Binding StartLiveCommand}" IsVisible="{Binding !IsLive}"
+                            ToolTip.Tip="Start odbioru na żywo (UDP)">
+                        <mi:MaterialIcon Kind="AccessPoint" Width="22" Height="22" />
+                    </Button>
+                    <Button Classes="tool" Command="{Binding StopLiveCommand}" IsVisible="{Binding IsLive}"
+                            ToolTip.Tip="Zatrzymaj odbiór na żywo">
+                        <mi:MaterialIcon Kind="AccessPointOff" Width="22" Height="22" Foreground="#FF6B6B" />
+                    </Button>
+
+                    <Separator Classes="vertical" />
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ToggleButton Classes="seg" CornerRadius="8,0,0,8" Tag="Widok3D" Click="OnViewModeClick"
+                                      IsChecked="{Binding ViewMode, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Widok3D}"
+                                      ToolTip.Tip="Widok 3D (3)">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <mi:MaterialIcon Kind="CubeOutline" Width="18" Height="18" />
+                                <TextBlock Text="3D" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </ToggleButton>
+                        <ToggleButton Classes="seg" CornerRadius="0,8,8,0" Tag="Widok2D" Click="OnViewModeClick"
+                                      IsChecked="{Binding ViewMode, Mode=OneWay, Converter={StaticResource EnumEquals}, ConverterParameter=Widok2D}"
+                                      ToolTip.Tip="Rzut 2D (2)">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <mi:MaterialIcon Kind="VectorSquare" Width="18" Height="18" />
+                                <TextBlock Text="2D" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </ToggleButton>
+                    </StackPanel>
+                    <ComboBox ItemsSource="{Binding Planes}" SelectedItem="{Binding Plane}" Width="86"
+                              Margin="8,0,0,0" VerticalAlignment="Center" IsVisible="{Binding Is2D}"
+                              ToolTip.Tip="Płaszczyzna rzutu" />
+
+                    <Separator Classes="vertical" />
+
+                    <ToggleButton Classes="tool" IsChecked="{Binding ShowGrid, Mode=TwoWay}" ToolTip.Tip="Siatka pomiarowa">
+                        <mi:MaterialIcon Kind="Grid" Width="22" Height="22" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" IsChecked="{Binding ShowAxes, Mode=TwoWay}" ToolTip.Tip="Osie X / Y / Z">
+                        <mi:MaterialIcon Kind="AxisArrow" Width="22" Height="22" />
+                    </ToggleButton>
+                    <ToggleButton Classes="tool" IsChecked="{Binding IsMeasuring, Mode=TwoWay}"
+                                  ToolTip.Tip="Pomiar odległości: kliknij dwa punkty chmury">
+                        <mi:MaterialIcon Kind="Ruler" Width="22" Height="22" />
+                    </ToggleButton>
+                    <Button Classes="tool" Click="OnResetViewClick" ToolTip.Tip="Dopasuj widok do chmury (R)">
+                        <mi:MaterialIcon Kind="FitToScreenOutline" Width="22" Height="22" />
+                    </Button>
+
+                </WrapPanel>
+                </DockPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ===== Obszar roboczy ===== -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+            <DockPanel Grid.Column="0">
+                <Border DockPanel.Dock="Bottom" Classes="panel" BorderThickness="0,1,0,0" Padding="8"
+                        IsVisible="{Binding IsDiagnosticsOpen}">
+                    <TextBox Text="{Binding Diagnostics, Mode=OneWay}" IsReadOnly="True"
+                             AcceptsReturn="True" TextWrapping="Wrap" MaxHeight="140"
+                             FontFamily="Menlo,Consolas,monospace" FontSize="11" />
+                </Border>
+                <Border DockPanel.Dock="Bottom" Classes="panel" BorderThickness="0,1,0,0" Padding="10,8" Height="200"
+                        IsVisible="{Binding IsTableOpen}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding Table.Header}" FontFamily="Menlo,Consolas,monospace"
+                                   FontSize="11" FontWeight="Bold" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,4" />
+                        <ListBox ItemsSource="{Binding Table}" FontFamily="Menlo,Consolas,monospace" FontSize="11">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <TextBlock Text="{Binding}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <!-- Pasek odtwarzania -->
+                <Border DockPanel.Dock="Bottom" Classes="panel" BorderThickness="0,1,0,0" Padding="10,8"
+                        IsVisible="{Binding HasSequence}">
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                <Button Classes="tool" Command="{Binding FirstFrameCommand}" ToolTip.Tip="Pierwsza klatka (Home)">
+                                    <mi:MaterialIcon Kind="SkipPrevious" Width="22" Height="22" />
+                                </Button>
+                                <Button Classes="tool" Command="{Binding StepBackCommand}" ToolTip.Tip="Klatka wstecz (←)">
+                                    <mi:MaterialIcon Kind="ChevronLeft" Width="22" Height="22" />
+                                </Button>
+                                <Button Classes="tool primary" Command="{Binding PlayPauseCommand}" ToolTip.Tip="Odtwarzaj / pauza (spacja)">
+                                    <Panel>
+                                        <mi:MaterialIcon Kind="Play" Width="22" Height="22" IsVisible="{Binding !IsPlaying}" />
+                                        <mi:MaterialIcon Kind="Pause" Width="22" Height="22" IsVisible="{Binding IsPlaying}" />
+                                    </Panel>
+                                </Button>
+                                <Button Classes="tool" Command="{Binding StepForwardCommand}" ToolTip.Tip="Klatka do przodu (→)">
+                                    <mi:MaterialIcon Kind="ChevronRight" Width="22" Height="22" />
+                                </Button>
+                                <Button Classes="tool" Command="{Binding LastFrameCommand}" ToolTip.Tip="Ostatnia klatka (End)">
+                                    <mi:MaterialIcon Kind="SkipNext" Width="22" Height="22" />
+                                </Button>
+                            </StackPanel>
+                            <Slider Grid.Column="1" x:Name="SeekSlider" Minimum="0" Maximum="{Binding Duration}"
+                                    Value="{Binding PositionSeconds}" Margin="12,0" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="Klatka" VerticalAlignment="Center" Margin="0,0,6,0"
+                                       Foreground="{StaticResource MutedBrush}" />
+                            <NumericUpDown Grid.Column="3" Width="110" Minimum="1" Maximum="{Binding TotalFrames}" Increment="1"
+                                           FormatString="0" Value="{Binding FrameNumber}" />
+                            <TextBlock Grid.Column="4" Text="{Binding TotalFrames, StringFormat='/ {0}'}"
+                                       VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{StaticResource MutedBrush}" />
+                        </Grid>
+                        <WrapPanel>
+                            <TextBlock Text="Tempo" VerticalAlignment="Center" Margin="0,0,6,4" Foreground="{StaticResource MutedBrush}" />
+                            <ComboBox Width="90" ItemsSource="{Binding Speeds}" SelectedItem="{Binding Speed}"
+                                      DisplayMemberBinding="{Binding Label}" Margin="0,0,14,4" />
+                            <CheckBox Content="Pętla" IsChecked="{Binding Loop}" VerticalAlignment="Center" Margin="0,0,14,4" />
+                            <TextBlock Text="Zakres" VerticalAlignment="Center" Margin="0,0,6,4" Foreground="{StaticResource MutedBrush}" />
+                            <NumericUpDown Width="70" Minimum="1" Maximum="{Binding TotalFrames}" Increment="1"
+                                           FormatString="0" Value="{Binding RangeStart}" ShowButtonSpinner="False" Margin="0,0,4,4" />
+                            <TextBlock Text="–" VerticalAlignment="Center" Margin="0,0,4,4" />
+                            <NumericUpDown Width="70" Minimum="1" Maximum="{Binding TotalFrames}" Increment="1"
+                                           FormatString="0" Value="{Binding RangeEnd}" ShowButtonSpinner="False" Margin="0,0,14,4" />
+                            <TextBlock Text="Ślad (poprzednie klatki)" VerticalAlignment="Center" Margin="0,0,6,4"
+                                       Foreground="{StaticResource MutedBrush}" />
+                            <NumericUpDown Width="70" Minimum="0" Maximum="10" Increment="1"
+                                           FormatString="0" Value="{Binding TrailingFrames}" ShowButtonSpinner="False" Margin="0,0,0,4" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Widok sceny z nakladkami -->
+                <Grid>
+                    <c:PointCloudView3D x:Name="View3D" IsVisible="{Binding Is3D}" PointCloud="{Binding PointCloud}"
+                                        ColorSettings="{Binding ColorSettings}"
+                                        AutoFitCamera="{Binding AutoFitCamera}"
+                                        FitVersion="{Binding FitVersion}"
+                                        PointSize="{Binding PointSize}" ShowGrid="{Binding ShowGrid}"
+                                        ShowAxes="{Binding ShowAxes}"
+                                        MeasureMode="{Binding IsMeasuring}"
+                                        MeasuredDistance="{Binding MeasuredDistance, Mode=OneWayToSource}"
+                                        MeasuredPointCount="{Binding MeasuredPointCount, Mode=OneWayToSource}"
+                                        Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
+                    <c:PointCloudView x:Name="View2D" IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}"
+                                      Plane="{Binding Plane}" ColorSettings="{Binding ColorSettings}"
+                                      AutoResetView="{Binding AutoResetView}" />
+
+                    <!-- Pusty stan -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10"
+                                IsVisible="{Binding PointCloud, Converter={x:Static ObjectConverters.IsNull}}"
+                                IsHitTestVisible="True">
+                        <mi:MaterialIcon Kind="CubeScan" Width="72" Height="72" Foreground="#3A3A36"
+                                         HorizontalAlignment="Center" />
+                        <TextBlock Text="Brak danych do wyświetlenia" FontSize="18" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" Foreground="#EDEBD7" />
+                        <TextBlock Text="Otwórz plik chmury punktów lub nagranie pcap, wskaż sekwencję albo uruchom odbiór na żywo."
+                                   Foreground="{StaticResource MutedBrush}" TextAlignment="Center" TextWrapping="Wrap"
+                                   MaxWidth="360" HorizontalAlignment="Center" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,6,0,0">
+                            <Button Classes="accent" Click="OnBrowseClick">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <mi:MaterialIcon Kind="FolderOpenOutline" Width="18" Height="18" />
+                                    <TextBlock Text="Otwórz plik" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="soft" Click="OnBrowseSequenceClick">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <mi:MaterialIcon Kind="Filmstrip" Width="18" Height="18" />
+                                    <TextBlock Text="Sekwencja" />
+                                </StackPanel>
+                            </Button>
+                            <Button Classes="soft" Command="{Binding StartLiveCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <mi:MaterialIcon Kind="AccessPoint" Width="18" Height="18" />
+                                    <TextBlock Text="Na żywo" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Kostka orientacji -->
+                    <c:ViewCubeControl x:Name="ViewCube" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                       Margin="0,14,18,0" IsVisible="{Binding ShowViewCube}"
+                                       Yaw="{Binding #View3D.ViewYaw}" Pitch="{Binding #View3D.ViewPitch}"
+                                       ToolTip.Tip="Kliknij ścianę, aby spojrzeć wzdłuż osi X / Y / Z" />
+
+                    <Border Classes="overlay" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="14"
+                            IsVisible="{Binding IsMeasuring}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <mi:MaterialIcon Kind="Ruler" Width="18" Height="18" Foreground="#F5C66B" />
+                            <TextBlock Text="{Binding MeasureInfo}" Foreground="#F5C66B" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Classes="overlay" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="14"
+                            IsVisible="{Binding ShowLegend}">
+                        <c:ColorLegend ColorSettings="{Binding ColorSettings}" Title="{Binding LegendTitle}" />
+                    </Border>
+                </Grid>
+            </DockPanel>
+
+            <!-- ===== Panel boczny ===== -->
+            <ScrollViewer Grid.Column="1" x:Name="FiltersPanel" Width="340" Background="{StaticResource PanelBgBrush}"
+                          BorderBrush="{StaticResource HairlineBrush}" BorderThickness="1,0,0,0"
+                          HorizontalScrollBarVisibility="Disabled"
+                          IsVisible="{Binding IsFiltersPanelOpen}">
+                <StackPanel Margin="12" Spacing="0">
+
+                    <Expander Classes="section">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <mi:MaterialIcon Kind="PaletteOutline" Width="18" Height="18" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Classes="sectionTitle" Text="Wygląd" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Expander.Header>
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="caption" Text="Kolorowanie wg" />
+                            <ComboBox ItemsSource="{Binding ColorModes}" SelectedItem="{Binding ColorMode}"
+                                      HorizontalAlignment="Stretch">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="rend:ColorMode">
+                                        <TextBlock Text="{Binding Converter={StaticResource EnumLabel}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowLegend}">
+                                <TextBlock Classes="caption" Text="Paleta kolorów" />
+                                <ComboBox ItemsSource="{Binding Colormaps}" SelectedItem="{Binding Colormap}"
+                                          HorizontalAlignment="Stretch">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="rend:ColormapKind">
+                                            <TextBlock Text="{Binding Converter={StaticResource EnumLabel}}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <CheckBox Content="Automatyczny zakres" IsChecked="{Binding AutoColorRange}" />
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Classes="caption" Text="Min" />
+                                        <TextBox Text="{Binding ColorRangeMin, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Classes="caption" Text="Max" />
+                                        <TextBox Text="{Binding ColorRangeMax, Converter={StaticResource FloatText}, UpdateSourceTrigger=LostFocus}" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                            <TextBlock Text="{Binding ColorWarning}" Foreground="{StaticResource WarnBrush}" FontSize="12"
+                                       TextWrapping="Wrap" />
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <TextBlock Classes="caption" Text="Rozmiar punktu" />
+                                <TextBlock Grid.Column="1" Classes="caption" Text="{Binding PointSize, StringFormat='{}{0:0.0} px'}" />
+                            </Grid>
+                            <Slider Minimum="1" Maximum="10" Value="{Binding PointSize}" />
+                            <CheckBox Content="Siatka pomiarowa" IsChecked="{Binding ShowGrid, Mode=TwoWay}" />
+                            <CheckBox Content="Osie X / Y / Z" IsChecked="{Binding ShowAxes, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander Classes="section">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <mi:MaterialIcon Kind="AccessPoint" Width="18" Height="18" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Classes="sectionTitle" Text="Źródło na żywo" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Expander.Header>
+                        <StackPanel Spacing="8">
+                            <WrapPanel x:Name="LiveRow">
+                                <TextBox Text="{Binding LivePort}" Width="80" Margin="0,0,6,6" VerticalAlignment="Center"
+                                         PlaceholderText="Port" ToolTip.Tip="Port UDP" />
+                                <ComboBox ItemsSource="{Binding LiveProtocols}" SelectedItem="{Binding LiveProtocol}"
+                                          Width="190" Margin="0,0,6,6" VerticalAlignment="Center">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:LiveProtocol">
+                                            <TextBlock Text="{Binding Converter={StaticResource ProtocolToText}}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Button Classes="accent" Content="Start" Command="{Binding StartLiveCommand}" Margin="0,0,6,6"
+                                        VerticalAlignment="Center" IsEnabled="{Binding !IsLive}" />
+                                <Button Classes="soft" Content="Stop" Command="{Binding StopLiveCommand}" Margin="0,0,6,6"
+                                        VerticalAlignment="Center" IsVisible="{Binding IsLive}" />
+                                <Button Classes="soft" Content="Nagrywaj" x:Name="RecordButton" Click="OnRecordClick" Margin="0,0,6,6"
+                                        VerticalAlignment="Center" IsVisible="{Binding CanStartRecording}" />
+                                <Button Classes="soft" Content="Stop nagrania" x:Name="StopRecordButton" Click="OnStopRecordingClick" Margin="0,0,6,6"
+                                        VerticalAlignment="Center" IsVisible="{Binding IsRecording}" />
+                                <TextBlock Text="{Binding RecordInfo}" VerticalAlignment="Center" Margin="0,0,6,6"
+                                           IsVisible="{Binding IsRecording}" Foreground="#FF6B6B" />
+                                <CheckBox Content="Symulator" IsChecked="{Binding SimulatorEnabled}" VerticalAlignment="Center"
+                                          Margin="0,0,6,6" />
+                            </WrapPanel>
+                            <TextBlock Classes="caption" Text="Czujnik Velodyne" />
+                            <ComboBox ItemsSource="{Binding SensorModels}" SelectedItem="{Binding SensorModel}"
+                                      HorizontalAlignment="Stretch" ToolTip.Tip="Czujnik z wbudowaną kalibracją">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:VelodyneModel">
+                                        <TextBlock Text="{Binding Converter={StaticResource EnumLabel}}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Text="{Binding CalibrationLabel}" VerticalAlignment="Center" FontSize="12"
+                                           TextTrimming="CharacterEllipsis" />
+                                <Button Grid.Column="1" Classes="soft" Content="Plik db.xml..." Click="OnBrowseCalibrationClick"
+                                        Margin="6,0,0,0" ToolTip.Tip="Kalibracja dla HDL-32E, VLP-32, HDL-64E..." />
+                                <Button Grid.Column="2" Classes="soft" Content="✕" Command="{Binding ResetCalibrationCommand}"
+                                        Margin="4,0,0,0" ToolTip.Tip="Wróć do wbudowanej kalibracji" />
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander Classes="section">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <mi:MaterialIcon Kind="FilterOutline" Width="18" Height="18" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Classes="sectionTitle" Text="Filtry" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Expander.Header>
+                        <StackPanel Spacing="8">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <ComboBox ItemsSource="{Binding Pipeline.AvailableFilters}"
+                                          SelectedItem="{Binding Pipeline.SelectedAvailableFilter}"
+                                          DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch" />
+                                <Button Grid.Column="1" Classes="accent" Content="Dodaj" Margin="6,0,0,0"
+                                        Command="{Binding Pipeline.AddStage}"
+                                        CommandParameter="{Binding Pipeline.SelectedAvailableFilter.Id}" />
+                            </Grid>
+
+                            <ListBox ItemsSource="{Binding Pipeline.Stages}" SelectedItem="{Binding Pipeline.SelectedStage}"
+                                     MaxHeight="240" Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PipelineStageViewModel">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Name}" />
+                                                <TextBlock FontSize="11" Opacity="0.7">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0:N0} → {1:N0} pkt">
+                                                            <Binding Path="InputCount" />
+                                                            <Binding Path="OutputCount" />
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Classes="tool" Width="26" Height="26"
+                                                        Command="{Binding $parent[ListBox].DataContext.Pipeline.MoveStageUp}"
+                                                        CommandParameter="{Binding Index}" ToolTip.Tip="W górę">
+                                                    <mi:MaterialIcon Kind="ChevronUp" Width="16" Height="16" />
+                                                </Button>
+                                                <Button Classes="tool" Width="26" Height="26"
+                                                        Command="{Binding $parent[ListBox].DataContext.Pipeline.MoveStageDown}"
+                                                        CommandParameter="{Binding Index}" ToolTip.Tip="W dół">
+                                                    <mi:MaterialIcon Kind="ChevronDown" Width="16" Height="16" />
+                                                </Button>
+                                                <Button Classes="tool" Width="26" Height="26"
+                                                        Command="{Binding $parent[ListBox].DataContext.Pipeline.RemoveStage}"
+                                                        CommandParameter="{Binding Index}" ToolTip.Tip="Usuń filtr">
+                                                    <mi:MaterialIcon Kind="Close" Width="16" Height="16" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <StackPanel IsVisible="{Binding Pipeline.HasEditor}" Spacing="6">
+                                <TextBlock Text="{Binding Pipeline.Editor.Title}" FontWeight="SemiBold" />
+                                <ItemsControl ItemsSource="{Binding Pipeline.Editor.Parameters}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:FilterParameterViewModel">
+                                            <StackPanel Spacing="2" Margin="0,4">
+                                                <TextBlock Classes="caption" Text="{Binding Label}" />
+                                                <TextBox Text="{Binding Number, Converter={StaticResource NumberText}, UpdateSourceTrigger=LostFocus}"
+                                                         IsVisible="{Binding Kind, Converter={StaticResource KindToBool}, ConverterParameter=Number}" />
+                                                <ComboBox ItemsSource="{Binding Choices}" SelectedIndex="{Binding SelectedChoice}"
+                                                          HorizontalAlignment="Stretch"
+                                                          IsVisible="{Binding Kind, Converter={StaticResource KindToBool}, ConverterParameter=Choice}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Classes="accent" Content="Zastosuj" Command="{Binding Pipeline.Editor.Apply}" />
+                                    <Button Classes="soft" Content="Anuluj" Command="{Binding Pipeline.Editor.Cancel}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ===== Pasek stanu ===== -->
+        <Border Grid.Row="2" Classes="panel" BorderThickness="0,1,0,0" Padding="12,5">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding Status}" VerticalAlignment="Center" FontSize="12"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding StatusInfo}" VerticalAlignment="Center" FontSize="12"
+                           Foreground="{StaticResource MutedBrush}" Margin="16,0,0,0" />
+            </Grid>
+        </Border>
+    </Grid>
 
 </Window>

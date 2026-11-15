@@ -480,3 +480,9 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Instrukcje dla Claude Code (lokalne)
+CLAUDE.md
+
+# Przykladowe dane lidarowe do testow (41 MB)
+lidar-samples/

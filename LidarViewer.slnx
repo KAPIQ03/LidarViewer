@@ -4,6 +4,8 @@
     <Project Path="src/LidarViewer.Core/LidarViewer.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/LidarViewer.App.Headless.Tests/LidarViewer.App.Headless.Tests.csproj" />
+    <Project Path="tests/LidarViewer.App.Tests/LidarViewer.App.Tests.csproj" />
     <Project Path="tests/LidarViewer.Core.Tests/LidarViewer.Core.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,108 @@
+using LidarViewer.Core.Models;
+
+namespace LidarViewer.Core.Filters;
+
+public static class VoxelGridFilter
+{
+    private const int AxisOffset = 1 << 20;
+
+    public static PointCloud Apply(PointCloud cloud, float voxelSize)
+    {
+        ArgumentNullException.ThrowIfNull(cloud);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(voxelSize);
+
+        int count = cloud.Count;
+        var slots = new Dictionary<long, int>(count);
+        var order = new List<long>();
+        var sums = new List<double>(count * 3);
+        var counts = new List<int>(count);
+        var intensities = new List<byte>(count);
+        var categories = new List<int>(count);
+        var laserIds = new List<byte>(count);
+        var azimuths = new List<float>(count);
+        var times = new List<float>(count);
+
+        bool hasIntensity = cloud.Intensity is not null;
+        bool hasCategory = cloud.Category is not null;
+        bool hasLaser = cloud.LaserId is not null;
+        bool hasAzimuth = cloud.Azimuth is not null;
+        bool hasTime = cloud.Time is not null;
+
+        for (int i = 0; i < count; i++)
+        {
+            float x = cloud.Positions[i * 3];
+            float y = cloud.Positions[i * 3 + 1];
+            float z = cloud.Positions[i * 3 + 2];
+
+            long key = Key(x, y, z, voxelSize);
+            if (!slots.TryGetValue(key, out int slot))
+            {
+                slot = order.Count;
+                slots[key] = slot;
+                order.Add(key);
+                sums.Add(0);
+                sums.Add(0);
+                sums.Add(0);
+                counts.Add(0);
+                intensities.Add(0);
+                categories.Add(0);
+                laserIds.Add(0);
+                azimuths.Add(0);
+                times.Add(0);
+            }
+
+            if (counts[slot] == 0)
+            {
+                if (hasIntensity) intensities[slot] = cloud.Intensity![i];
+                if (hasCategory) categories[slot] = cloud.Category![i];
+                if (hasLaser) laserIds[slot] = cloud.LaserId![i];
+                if (hasAzimuth) azimuths[slot] = cloud.Azimuth![i];
+                if (hasTime) times[slot] = cloud.Time![i];
+            }
+
+            sums[slot * 3] += x;
+            sums[slot * 3 + 1] += y;
+            sums[slot * 3 + 2] += z;
+            counts[slot]++;
+        }
+
+        var positions = new float[order.Count * 3];
+        var intensity = hasIntensity ? new byte[order.Count] : null;
+        var category = hasCategory ? new int[order.Count] : null;
+        var laserId = hasLaser ? new byte[order.Count] : null;
+        var azimuth = hasAzimuth ? new float[order.Count] : null;
+        var time = hasTime ? new float[order.Count] : null;
+
+        for (int slot = 0; slot < order.Count; slot++)
+        {
+            float divisor = counts[slot];
+            positions[slot * 3] = (float)(sums[slot * 3] / divisor);
+            positions[slot * 3 + 1] = (float)(sums[slot * 3 + 1] / divisor);
+            positions[slot * 3 + 2] = (float)(sums[slot * 3 + 2] / divisor);
+
+            if (intensity is not null) intensity[slot] = intensities[slot];
+            if (category is not null) category[slot] = categories[slot];
+            if (laserId is not null) laserId[slot] = laserIds[slot];
+            if (azimuth is not null) azimuth[slot] = azimuths[slot];
+            if (time is not null) time[slot] = times[slot];
+        }
+
+        // Atrybuty niezwiazane z pozycja bierzemy z pierwszego punktu woksela.
+        return new PointCloud(positions, intensity, category)
+        {
+            Origin = cloud.Origin,
+            LaserId = laserId,
+            Azimuth = azimuth,
+            Time = time,
+        };
+    }
+
+    private static long Key(float x, float y, float z, float voxelSize)
+    {
+        long ix = (long)Math.Floor(x / voxelSize) + AxisOffset;
+        long iy = (long)Math.Floor(y / voxelSize) + AxisOffset;
+        long iz = (long)Math.Floor(z / voxelSize) + AxisOffset;
+
+        return (ix << 42) | (iy << 21) | iz;
+    }
+}
