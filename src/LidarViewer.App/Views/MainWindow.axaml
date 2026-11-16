@@ -198,7 +198,7 @@
                                     Value="{Binding PositionSeconds}" Margin="12,0" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="2" Text="Klatka" VerticalAlignment="Center" Margin="0,0,6,0"
                                        Foreground="{StaticResource MutedBrush}" />
-                            <NumericUpDown Grid.Column="3" Width="110" Minimum="1" Maximum="{Binding TotalFrames}" Increment="1"
+                            <NumericUpDown Grid.Column="3" MinWidth="140" TextAlignment="Center" VerticalContentAlignment="Center" Minimum="1" Maximum="{Binding TotalFrames}" Increment="1"
                                            FormatString="0" Value="{Binding FrameNumber}" />
                             <TextBlock Grid.Column="4" Text="{Binding TotalFrames, StringFormat='/ {0}'}"
                                        VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{StaticResource MutedBrush}" />
