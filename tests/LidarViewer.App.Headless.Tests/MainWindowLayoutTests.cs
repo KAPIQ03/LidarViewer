@@ -276,6 +276,9 @@ public class MainWindowLayoutTests
 
         var boxes = window.GetVisualDescendants().OfType<NumericUpDown>().ToList();
         Assert.Equal(99999m, boxes[0].Value);
+        var frameText = boxes[0].GetVisualDescendants().OfType<TextBox>().First();
+        Assert.Equal(Avalonia.Media.TextAlignment.Center, frameText.TextAlignment);
+        Assert.Equal(Avalonia.Layout.VerticalAlignment.Center, frameText.VerticalContentAlignment);
         foreach (var box in boxes)
         {
             var scroll = box.GetVisualDescendants().OfType<TextBox>().First()
