@@ -288,8 +288,14 @@ public partial class MainWindow : Window
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.IsPlaying))
-            _timer.IsEnabled = (DataContext as MainViewModel)?.IsPlaying ?? false;
+        if (e.PropertyName != nameof(MainViewModel.IsPlaying))
+            return;
+
+        bool playing = (DataContext as MainViewModel)?.IsPlaying ?? false;
+        if (playing && !_timer.IsEnabled)
+            _lastTick = DateTime.UtcNow;
+
+        _timer.IsEnabled = playing;
     }
 
     private async void OnClosed(object? sender, EventArgs e)
