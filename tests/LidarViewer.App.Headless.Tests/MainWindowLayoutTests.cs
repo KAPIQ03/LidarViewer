@@ -267,6 +267,27 @@ public class MainWindowLayoutTests
     }
 
     [AvaloniaFact]
+    public void FrameNumberBoxShowsWholeNumber()
+    {
+        var (window, vm) = ShowWindow();
+        vm.StartPlayback(new FakeFrameSource(99999));
+        vm.LastFrameCommand.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+
+        var boxes = window.GetVisualDescendants().OfType<NumericUpDown>().ToList();
+        Assert.Equal(99999m, boxes[0].Value);
+        foreach (var box in boxes)
+        {
+            var scroll = box.GetVisualDescendants().OfType<TextBox>().First()
+                .GetVisualDescendants().OfType<ScrollViewer>().First();
+            Assert.True(scroll.Extent.Width <= scroll.Viewport.Width + 0.5,
+                $"Liczba {box.Value} nie miesci sie w polu: tekst {scroll.Extent.Width}, pole {scroll.Viewport.Width}.");
+        }
+
+        window.Close();
+    }
+
+    [AvaloniaFact]
     public void PointTableIsVirtualized()
     {
         var (window, vm) = ShowWindow();
