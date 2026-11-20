@@ -194,6 +194,12 @@ public partial class MainViewModel
             return;
         }
 
+        if (!CanLoadFile)
+        {
+            Status = LoadBlockedMessage;
+            return;
+        }
+
         StartPlayback(source);
     }
 

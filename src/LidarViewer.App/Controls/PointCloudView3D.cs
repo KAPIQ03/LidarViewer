@@ -125,6 +125,24 @@ public sealed class PointCloudView3D : OpenGlControlBase
         set => SetValue(MeasureModeProperty, value);
     }
 
+    public static readonly StyledProperty<bool> MeasureFromSensorProperty =
+        AvaloniaProperty.Register<PointCloudView3D, bool>(nameof(MeasureFromSensor));
+
+    public bool MeasureFromSensor
+    {
+        get => GetValue(MeasureFromSensorProperty);
+        set => SetValue(MeasureFromSensorProperty, value);
+    }
+
+    public static readonly StyledProperty<IReadOnlyList<ScreenLabel>> GridLabelsProperty =
+        AvaloniaProperty.Register<PointCloudView3D, IReadOnlyList<ScreenLabel>>(nameof(GridLabels), []);
+
+    public IReadOnlyList<ScreenLabel> GridLabels
+    {
+        get => GetValue(GridLabelsProperty);
+        private set => SetValue(GridLabelsProperty, value);
+    }
+
     public static readonly StyledProperty<double?> MeasuredDistanceProperty =
         AvaloniaProperty.Register<PointCloudView3D, double?>(nameof(MeasuredDistance), defaultBindingMode: BindingMode.OneWayToSource);
 
@@ -178,6 +196,8 @@ public sealed class PointCloudView3D : OpenGlControlBase
     private int _axisVertexCount, _gridVertexCount, _measureVertexCount;
     private float[] _renderPositions = [];
     private readonly List<Vector3> _measurePoints = [];
+    private IReadOnlyList<GridLabel> _ringLabels = [];
+    private Vector3 _sensorPosition;
     private bool _guidesDirty;
     private Point _pressPoint;
     private bool _pressWasLeft;
@@ -213,6 +233,11 @@ public sealed class PointCloudView3D : OpenGlControlBase
         MeasureModeProperty.Changed.AddClassHandler<PointCloudView3D>((view, e) =>
         {
             if (e.NewValue is false && view._measurePoints.Count > 0)
+                view.ClearMeasurement();
+        });
+        MeasureFromSensorProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) =>
+        {
+            if (view._measurePoints.Count > 0)
                 view.ClearMeasurement();
         });
         PointSizeProperty.Changed.AddClassHandler<PointCloudView3D>((view, _) => view.RequestNextFrameRendering());
@@ -338,6 +363,11 @@ public sealed class PointCloudView3D : OpenGlControlBase
             }
 
             gl.BindVertexArray(_vao);
+            PublishGridLabels(ShowGrid ? ProjectGridLabels(mvp, width, height, (float)scale) : []);
+        }
+        else
+        {
+            PublishGridLabels([]);
         }
 
         if (_screenshotCallback is not null)
@@ -349,6 +379,29 @@ public sealed class PointCloudView3D : OpenGlControlBase
             Report($"Render OK: viewport {width}x{height}, fb={fb}");
         }
         ReportGlError(gl, "po renderowaniu");
+    }
+
+    private List<ScreenLabel> ProjectGridLabels(Matrix4x4 mvp, int width, int height, float scale)
+    {
+        var labels = new List<ScreenLabel>(_ringLabels.Count);
+        foreach (GridLabel label in _ringLabels)
+        {
+            if (ScreenProjector.Project(label.Position, mvp, width, height) is { } screen)
+                labels.Add(new ScreenLabel(screen.X / scale, screen.Y / scale, label.Text));
+        }
+
+        return labels;
+    }
+
+    private void PublishGridLabels(IReadOnlyList<ScreenLabel> labels)
+    {
+        if (labels.Count == 0 && GridLabels.Count == 0)
+            return;
+
+        if (Dispatcher.UIThread.CheckAccess())
+            GridLabels = labels;
+        else
+            Dispatcher.UIThread.Post(() => GridLabels = labels);
     }
 
     protected override void OnOpenGlDeinit(GlInterface glInterface)
@@ -434,6 +487,8 @@ public sealed class PointCloudView3D : OpenGlControlBase
     {
         Vector3 sensorPosition = SensorPosition(cloud);
         var guides = SceneGuides.Build(sensorPosition, cloud.Radius);
+        _ringLabels = guides.RingLabels;
+        _sensorPosition = sensorPosition;
         Report($"Osie: czujnik w ({sensorPosition.X:F1}; {sensorPosition.Y:F1}; {sensorPosition.Z:F1}), Origin chmury ({cloud.Origin.X:F1}; {cloud.Origin.Y:F1}; {cloud.Origin.Z:F1}), {(SensorLocator.Locate(cloud) is null ? "poczatek ukladu poza chmura - osie w jej srodku" : "osie w poczatku ukladu")}.");
         _guidesDirty = false;
 
@@ -579,8 +634,11 @@ public sealed class PointCloudView3D : OpenGlControlBase
         if (index < 0)
             return;
 
-        if (_measurePoints.Count >= 2)
+        if (_measurePoints.Count >= 2 || MeasureFromSensor)
             _measurePoints.Clear();
+
+        if (MeasureFromSensor)
+            _measurePoints.Add(_sensorPosition);
 
         _measurePoints.Add(new Vector3(_renderPositions[index * 3], _renderPositions[index * 3 + 1], _renderPositions[index * 3 + 2]));
         UpdateMeasurement();

@@ -46,6 +46,8 @@ public partial class MainViewModel
             OnPropertyChanged(nameof(AutoResetView));
             OnPropertyChanged(nameof(LiveInfo));
             OnPropertyChanged(nameof(CanStartRecording));
+            OnPropertyChanged(nameof(CanLoadFile));
+            LoadCommand.NotifyCanExecuteChanged();
         }
     }
 
