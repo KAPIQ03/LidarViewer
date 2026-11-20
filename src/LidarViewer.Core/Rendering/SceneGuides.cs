@@ -8,8 +8,12 @@ public sealed class SceneGuides
     private const int Spokes = 12;
     private const int RingSegments = 96;
 
-    private SceneGuides(float[] axisPositions, byte[] axisColors, float[] gridPositions, byte[] gridColors, float ringStep, int ringCount)
+    public const float LabelAngle = MathF.PI / 4f;
+
+    private SceneGuides(float[] axisPositions, byte[] axisColors, float[] gridPositions, byte[] gridColors, float ringStep, int ringCount,
+        GridLabel[] ringLabels)
     {
+        RingLabels = ringLabels;
         AxisPositions = axisPositions;
         AxisColors = axisColors;
         GridPositions = gridPositions;
@@ -33,6 +37,8 @@ public sealed class SceneGuides
     public float RingStep { get; }
 
     public int RingCount { get; }
+
+    public IReadOnlyList<GridLabel> RingLabels { get; }
 
     public static SceneGuides Build(Vector3 origin, float sceneRadius)
     {
@@ -80,7 +86,15 @@ public sealed class SceneGuides
         for (int i = 3; i < gridColors.Length; i += 4)
             gridColors[i] = 255;
 
-        return new SceneGuides(axisPositions, axisColors, positions.ToArray(), gridColors, step, rings);
+        var labels = new GridLabel[rings];
+        for (int ring = 1; ring <= rings; ring++)
+        {
+            float r = ring * step;
+            var position = new Vector3(origin.X + r * MathF.Cos(LabelAngle), origin.Y + r * MathF.Sin(LabelAngle), origin.Z);
+            labels[ring - 1] = new GridLabel(position, DistanceFormatter.Format(r));
+        }
+
+        return new SceneGuides(axisPositions, axisColors, positions.ToArray(), gridColors, step, rings, labels);
     }
 
     public static float NiceStep(float sceneRadius)

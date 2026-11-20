@@ -200,9 +200,19 @@ public partial class MainViewModel : ViewModelBase
         ApplySource(cloud);
     }
 
-    [RelayCommand]
+    public const string LoadBlockedMessage = "Nie można wczytać pliku podczas odbioru na żywo - najpierw zatrzymaj sesję live.";
+
+    public bool CanLoadFile => !IsLive;
+
+    [RelayCommand(CanExecute = nameof(CanLoadFile))]
     private async Task LoadAsync()
     {
+        if (!CanLoadFile)
+        {
+            Status = LoadBlockedMessage;
+            return;
+        }
+
         string path = FilePath.Trim().Trim('"');
         if (path.Length == 0)
         {
@@ -220,6 +230,12 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             var cloud = await Task.Run(() => PointCloudLoader.Read(path));
+            if (!CanLoadFile)
+            {
+                Status = LoadBlockedMessage;
+                return;
+            }
+
             CloseSequence();
             ApplySource(cloud);
             Status = $"Wczytano {cloud.Count:N0} punktów ({System.IO.Path.GetFileName(path)}).";
@@ -263,12 +279,33 @@ public partial class MainViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(MeasureInfo))]
     public partial int MeasuredPointCount { get; set; }
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MeasureInfo))]
+    public partial bool MeasureFromSensor { get; set; }
+
     public string MeasureInfo => !IsMeasuring ? string.Empty
-        : MeasuredDistance is { } distance ? $"Odległość: {distance:0.000}"
+        : MeasureFromSensor
+            ? MeasuredDistance is { } fromSensor
+                ? $"Odległość od lidaru: {DistanceFormatter.Format(fromSensor)}"
+                : "Kliknij punkt chmury - zmierzę odległość od środka lidaru."
+        : MeasuredDistance is { } distance ? $"Odległość: {DistanceFormatter.Format(distance)}"
         : MeasuredPointCount == 1 ? "Wybierz drugi punkt."
         : "Kliknij punkt chmury.";
 
-    partial void OnIsMeasuringChanged(bool value) => OnPropertyChanged(nameof(MeasureInfo));
+    partial void OnIsMeasuringChanged(bool value)
+    {
+        if (!value)
+            MeasureFromSensor = false;
+        OnPropertyChanged(nameof(MeasureInfo));
+    }
+
+    partial void OnMeasureFromSensorChanged(bool value)
+    {
+        if (value)
+            IsMeasuring = true;
+        MeasuredDistance = null;
+        MeasuredPointCount = 0;
+    }
 
     [ObservableProperty]
     public partial bool IsTableOpen { get; set; }

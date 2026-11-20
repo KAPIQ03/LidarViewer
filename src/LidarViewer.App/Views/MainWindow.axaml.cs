@@ -105,6 +105,12 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainViewModel vm) return;
 
+        if (!vm.CanLoadFile)
+        {
+            vm.Status = MainViewModel.LoadBlockedMessage;
+            return;
+        }
+
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Wybierz plik z chmurą punktów",

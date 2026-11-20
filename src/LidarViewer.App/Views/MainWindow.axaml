@@ -33,7 +33,7 @@
         <StackPanel Grid.Row="0" x:Name="Toolbar">
             <Menu Background="{StaticResource PanelBgBrush}">
                 <MenuItem Header="_Plik">
-                    <MenuItem Header="Otwórz plik..." Click="OnBrowseClick" />
+                    <MenuItem Header="Otwórz plik..." Click="OnBrowseClick" IsEnabled="{Binding CanLoadFile}" />
                     <Separator />
                     <MenuItem Header="Zapisz jako (PLY, PCD, LAS, CSV)..." Click="OnSaveAsClick" />
                     <MenuItem Header="Zrzut widoku PNG..." Click="OnScreenshotClick" />
@@ -62,6 +62,7 @@
                 </MenuItem>
                 <MenuItem Header="_Narzędzia">
                     <MenuItem Header="Pomiar odległości" ToggleType="CheckBox" IsChecked="{Binding IsMeasuring, Mode=TwoWay}" />
+                    <MenuItem Header="Pomiar od środka lidaru" ToggleType="CheckBox" IsChecked="{Binding MeasureFromSensor, Mode=TwoWay}" />
                 </MenuItem>
                 <MenuItem Header="_Pomoc">
                     <MenuItem Header="Skróty klawiszowe" Click="OnShortcutsClick" />
@@ -81,7 +82,8 @@
                     </ToggleButton>
                 </StackPanel>
                 <WrapPanel ItemHeight="38">
-                    <Button Classes="tool" Click="OnBrowseClick" ToolTip.Tip="Otwórz plik chmury punktów lub nagranie pcap">
+                    <Button Classes="tool" Click="OnBrowseClick" IsEnabled="{Binding CanLoadFile}"
+                            ToolTip.Tip="Otwórz plik chmury punktów lub nagranie pcap (niedostępne podczas odbioru na żywo)">
                         <mi:MaterialIcon Kind="FolderOpenOutline" Width="22" Height="22" />
                     </Button>
                     <Button Classes="tool" x:Name="SaveAsButton" Click="OnSaveAsClick" ToolTip.Tip="Zapisz chmurę (PLY, PCD, LAS, CSV)">
@@ -230,9 +232,11 @@
                                         PointSize="{Binding PointSize}" ShowGrid="{Binding ShowGrid}"
                                         ShowAxes="{Binding ShowAxes}"
                                         MeasureMode="{Binding IsMeasuring}"
+                                        MeasureFromSensor="{Binding MeasureFromSensor}"
                                         MeasuredDistance="{Binding MeasuredDistance, Mode=OneWayToSource}"
                                         MeasuredPointCount="{Binding MeasuredPointCount, Mode=OneWayToSource}"
                                         Diagnostics="{Binding Diagnostics, Mode=OneWayToSource}" />
+                    <c:GridLabelOverlay IsVisible="{Binding Is3D}" Labels="{Binding #View3D.GridLabels}" />
                     <c:PointCloudView x:Name="View2D" IsVisible="{Binding Is2D}" PointCloud="{Binding PointCloud}"
                                       Plane="{Binding Plane}" ColorSettings="{Binding ColorSettings}"
                                       AutoResetView="{Binding AutoResetView}" />
@@ -248,7 +252,7 @@
                                    Foreground="{StaticResource MutedBrush}" TextAlignment="Center" TextWrapping="Wrap"
                                    MaxWidth="360" HorizontalAlignment="Center" />
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,6,0,0">
-                            <Button Classes="accent" Click="OnBrowseClick">
+                            <Button Classes="accent" Click="OnBrowseClick" IsEnabled="{Binding CanLoadFile}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <mi:MaterialIcon Kind="FolderOpenOutline" Width="18" Height="18" />
                                     <TextBlock Text="Otwórz plik" />
@@ -273,6 +277,9 @@
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <mi:MaterialIcon Kind="Ruler" Width="18" Height="18" Foreground="#F5C66B" />
                             <TextBlock Text="{Binding MeasureInfo}" Foreground="#F5C66B" VerticalAlignment="Center" />
+                            <CheckBox Content="od środka lidaru" IsChecked="{Binding MeasureFromSensor, Mode=TwoWay}"
+                                      Margin="8,0,0,0" VerticalAlignment="Center"
+                                      ToolTip.Tip="Mierz odległość od czujnika (początku osi) do klikniętego punktu" />
                         </StackPanel>
                     </Border>
 

@@ -68,3 +68,31 @@ public class SceneGuidesTests
         Assert.True(guides.GridVertexCount > 0);
     }
 }
+
+public class SceneGuidesLabelTests
+{
+    [Fact]
+    public void EveryRingHasLabelWithRealUnitsLyingOnRing()
+    {
+        var origin = new Vector3(1f, 2f, 3f);
+        var guides = SceneGuides.Build(origin, 60f);
+
+        Assert.Equal(guides.RingCount, guides.RingLabels.Count);
+        Assert.Equal("10 m", guides.RingLabels[0].Text);
+        Assert.Equal("60 m", guides.RingLabels[^1].Text);
+        for (int i = 0; i < guides.RingLabels.Count; i++)
+        {
+            var label = guides.RingLabels[i];
+            Assert.Equal((i + 1) * guides.RingStep, Vector3.Distance(origin, label.Position), 3);
+            Assert.Equal(origin.Z, label.Position.Z);
+        }
+    }
+
+    [Fact]
+    public void SmallScenesAreLabelledInCentimetres()
+    {
+        var guides = SceneGuides.Build(Vector3.Zero, 0.6f);
+
+        Assert.Equal("10 cm", guides.RingLabels[0].Text);
+    }
+}
